@@ -18,16 +18,17 @@ model User {
 }
 
 model Cliente {
-  id        String   @id @default(uuid())
-  nome      String
-  email     String?
-  telefone  String?
-  documento String?
-  endereco  String?
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  pedidos   Pedido[]
+  id             String          @id @default(uuid())
+  nome           String
+  email          String?
+  telefone       String?
+  documento      String?
+  endereco       String?
+  ativo          Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  pedidos        Pedido[]
+  precificacoes  Precificacao[]
 }
 
 enum StatusProduto {
@@ -99,4 +100,63 @@ model ItemPedido {
   quantidade    Int
   precoUnitario Decimal @db.Decimal(10, 2)
   subtotal      Decimal @db.Decimal(10, 2)
+}
+
+model Precificacao {
+  id              String   @id @default(uuid())
+  nome            String
+  categoria       String?
+  descricao       String?
+  clienteId       String?
+  cliente         Cliente? @relation(fields: [clienteId], references: [id])
+  observacoes     String?
+  tempoProducao   Decimal  @db.Decimal(10, 2) @default(0)
+  valorHora       Decimal  @db.Decimal(10, 2) @default(0)
+  taxaMarketplace Decimal  @db.Decimal(5, 2)  @default(0)
+  taxaCartao      Decimal  @db.Decimal(5, 2)  @default(0)
+  impostos        Decimal  @db.Decimal(5, 2)  @default(0)
+  taxasAdicionais Decimal  @db.Decimal(5, 2)  @default(0)
+  margemLucro     Decimal  @db.Decimal(5, 2)  @default(0)
+  quantidade      Int      @default(1)
+  custoMateriais  Decimal  @db.Decimal(10, 2) @default(0)
+  custoMaoDeObra  Decimal  @db.Decimal(10, 2) @default(0)
+  totalCustosFixos Decimal @db.Decimal(10, 2) @default(0)
+  totalExtras     Decimal  @db.Decimal(10, 2) @default(0)
+  totalTaxas      Decimal  @db.Decimal(10, 2) @default(0)
+  subtotal        Decimal  @db.Decimal(10, 2) @default(0)
+  lucroValor      Decimal  @db.Decimal(10, 2) @default(0)
+  precoFinal      Decimal  @db.Decimal(10, 2) @default(0)
+  precoUnitario   Decimal  @db.Decimal(10, 2) @default(0)
+  status          String   @default("RASCUNHO")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  materiais       MaterialPrecificacao[]
+  custosFixos     CustoFixoPrecificacao[]
+  extras          ExtraPrecificacao[]
+}
+
+model MaterialPrecificacao {
+  id              String        @id @default(uuid())
+  precificacaoId  String
+  precificacao    Precificacao  @relation(fields: [precificacaoId], references: [id], onDelete: Cascade)
+  nome            String
+  custoUnitario   Decimal       @db.Decimal(10, 2)
+  quantidade      Decimal       @db.Decimal(10, 2)
+  subtotal        Decimal       @db.Decimal(10, 2)
+}
+
+model CustoFixoPrecificacao {
+  id              String        @id @default(uuid())
+  precificacaoId  String
+  precificacao    Precificacao  @relation(fields: [precificacaoId], references: [id], onDelete: Cascade)
+  nome            String
+  valor           Decimal       @db.Decimal(10, 2)
+}
+
+model ExtraPrecificacao {
+  id              String        @id @default(uuid())
+  precificacaoId  String
+  precificacao    Precificacao  @relation(fields: [precificacaoId], references: [id], onDelete: Cascade)
+  nome            String
+  valor           Decimal       @db.Decimal(10, 2)
 }

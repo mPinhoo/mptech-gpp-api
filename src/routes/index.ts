@@ -6,6 +6,7 @@ import produtosRoutes from './produtos.routes.js';
 import estoqueRoutes from './estoque.routes.js';
 import pedidosRoutes from './pedidos.routes.js';
 import clientesRoutes from './clientes.routes.js';
+import precificacaoRoutes from './precificacao.routes.js';
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use('/produtos', authMiddleware, produtosRoutes);
 router.use('/estoque', authMiddleware, estoqueRoutes);
 router.use('/pedidos', authMiddleware, pedidosRoutes);
 router.use('/clientes', authMiddleware, clientesRoutes);
+router.use('/precificacao', authMiddleware, precificacaoRoutes);
 
 export default router;
