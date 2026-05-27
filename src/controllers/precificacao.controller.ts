@@ -20,7 +20,7 @@ export class PrecificacaoController {
 
   async findById(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await precificacaoService.findById(req.params.id);
+      const result = await precificacaoService.findById(req.params.id as string);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -47,7 +47,7 @@ export class PrecificacaoController {
 
   async update(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await precificacaoService.update(req.params.id, req.body);
+      const result = await precificacaoService.update(req.params.id as string, req.body);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -56,7 +56,7 @@ export class PrecificacaoController {
 
   async duplicate(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await precificacaoService.duplicate(req.params.id);
+      const result = await precificacaoService.duplicate(req.params.id as string);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -65,7 +65,7 @@ export class PrecificacaoController {
 
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
-      await precificacaoService.delete(req.params.id);
+      await precificacaoService.delete(req.params.id as string);
       res.json({ success: true, data: { message: 'Precificação excluída com sucesso' } });
     } catch (err) {
       next(err);
