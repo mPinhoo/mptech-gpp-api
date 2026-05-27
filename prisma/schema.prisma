@@ -30,14 +30,20 @@ model Cliente {
   pedidos   Pedido[]
 }
 
+enum StatusProduto {
+  ATIVO
+  INATIVO
+  FORA_DE_CICLO
+}
+
 model Produto {
-  id          String       @id @default(uuid())
+  id          String        @id @default(uuid())
   nome        String
   categoria   String
-  preco       Decimal      @db.Decimal(10, 2)
-  ativo       Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  preco       Decimal       @db.Decimal(10, 2)
+  status      StatusProduto @default(ATIVO)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
   estoque     Estoque?
   itensPedido ItemPedido[]
 }

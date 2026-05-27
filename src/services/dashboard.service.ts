@@ -35,8 +35,6 @@ export class DashboardService {
 
     const faturamento = Number(faturamentoResult._sum.valorTotal || 0);
     const faturamentoAnterior = Number(faturamentoAnteriorResult._sum.valorTotal || 0);
-    const despesas = 12480;
-    const saldoMes = faturamento - despesas;
 
     const pedidosTrend =
       pedidosMesAnterior > 0
@@ -51,8 +49,6 @@ export class DashboardService {
     return {
       totalPedidos: pedidosMes,
       faturamento,
-      despesas,
-      saldoMes,
       trends: {
         pedidos: Math.round(pedidosTrend * 10) / 10,
         faturamento: Math.round(faturamentoTrend * 10) / 10,
@@ -62,7 +58,7 @@ export class DashboardService {
 
   async getChart() {
     const now = new Date();
-    const months: { mes: string; faturamento: number; despesas: number }[] = [];
+    const months: { mes: string; faturamento: number }[] = [];
 
     for (let i = 4; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -79,7 +75,6 @@ export class DashboardService {
       months.push({
         mes: MESES[date.getMonth()],
         faturamento: Number(result._sum.valorTotal || 0),
-        despesas: 12000 + Math.floor(Math.random() * 1500),
       });
     }
 

@@ -4,9 +4,9 @@ import { produtosService } from '../services/produtos.service.js';
 export class ProdutosController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { ativo, search, page, limit } = req.query;
+      const { status, search, page, limit } = req.query;
       const result = await produtosService.findAll({
-        ativo: ativo as string | undefined,
+        status: status as string | undefined,
         search: search as string | undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,

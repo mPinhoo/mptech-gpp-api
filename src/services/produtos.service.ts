@@ -3,15 +3,15 @@ import { NotFoundError } from '../utils/errors.js';
 import { CreateProdutoInput, UpdateProdutoInput } from '../schemas/produto.schema.js';
 
 export class ProdutosService {
-  async findAll(filters: { ativo?: string; search?: string; page?: number; limit?: number }) {
+  async findAll(filters: { status?: string; search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = {};
 
-    if (filters.ativo !== undefined) {
-      where.ativo = filters.ativo === 'true';
+    if (filters.status) {
+      where.status = filters.status;
     }
 
     if (filters.search) {
@@ -37,7 +37,7 @@ export class ProdutosService {
         nome: p.nome,
         categoria: p.categoria,
         preco: Number(p.preco),
-        ativo: p.ativo,
+        status: p.status,
       })),
       meta: { page, limit, total },
     };
@@ -55,7 +55,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       preco: Number(produto.preco),
-      ativo: produto.ativo,
+      status: produto.status,
     };
   }
 
@@ -67,7 +67,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       preco: Number(produto.preco),
-      ativo: produto.ativo,
+      status: produto.status,
     };
   }
 
@@ -84,7 +84,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       preco: Number(produto.preco),
-      ativo: produto.ativo,
+      status: produto.status,
     };
   }
 
@@ -93,7 +93,7 @@ export class ProdutosService {
 
     await prisma.produto.update({
       where: { id },
-      data: { ativo: false },
+      data: { status: 'INATIVO' },
     });
   }
 }

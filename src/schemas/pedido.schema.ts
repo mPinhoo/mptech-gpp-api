@@ -6,7 +6,6 @@ const itemPedidoSchema = z.object({
 });
 
 export const createPedidoSchema = z.object({
-  numero: z.string().min(1, 'Número do pedido é obrigatório'),
   clienteId: z.string().uuid('ID do cliente inválido'),
   dataPedido: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data inválida'),
   prazoEntrega: z.string().refine((val) => !isNaN(Date.parse(val)), 'Prazo inválido'),

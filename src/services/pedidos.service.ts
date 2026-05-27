@@ -102,6 +102,21 @@ export class PedidosService {
     };
   }
 
+  private async generateNumero(): Promise<string> {
+    const last = await prisma.pedido.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { numero: true },
+    });
+
+    let nextNum = 1;
+    if (last?.numero) {
+      const match = last.numero.match(/(\d+)$/);
+      if (match) nextNum = Number(match[1]) + 1;
+    }
+
+    return `PED-${String(nextNum).padStart(4, '0')}`;
+  }
+
   async create(data: CreatePedidoInput) {
     const cliente = await prisma.cliente.findUnique({ where: { id: data.clienteId } });
     if (!cliente || !cliente.ativo) {
@@ -110,11 +125,11 @@ export class PedidosService {
 
     const produtoIds = data.itens.map((i) => i.produtoId);
     const produtos = await prisma.produto.findMany({
-      where: { id: { in: produtoIds }, ativo: true },
+      where: { id: { in: produtoIds }, status: 'ATIVO' },
     });
 
     if (produtos.length !== produtoIds.length) {
-      throw new AppError('Um ou mais produtos não encontrados ou inativos', 400, 'INVALID_PRODUCTS');
+      throw new AppError('Um ou mais produtos não encontrados ou indisponíveis', 400, 'INVALID_PRODUCTS');
     }
 
     const produtoMap = new Map(produtos.map((p) => [p.id, p]));
@@ -132,6 +147,7 @@ export class PedidosService {
     });
 
     const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0);
+    const numero = await this.generateNumero();
 
     const pedido = await prisma.$transaction(async (tx) => {
       for (const item of data.itens) {
@@ -153,7 +169,7 @@ export class PedidosService {
 
       return tx.pedido.create({
         data: {
-          numero: data.numero,
+          numero,
           clienteId: data.clienteId,
           dataPedido: new Date(data.dataPedido),
           prazoEntrega: new Date(data.prazoEntrega),
@@ -208,7 +224,7 @@ export class PedidosService {
     if (data.itens) {
       const produtoIds = data.itens.map((i) => i.produtoId);
       const produtos = await prisma.produto.findMany({
-        where: { id: { in: produtoIds }, ativo: true },
+        where: { id: { in: produtoIds }, status: 'ATIVO' },
       });
       const produtoMap = new Map(produtos.map((p) => [p.id, p]));
 
