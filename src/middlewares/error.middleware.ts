@@ -22,6 +22,9 @@ export function errorMiddleware(
   console.error('Stack:', err.stack);
 
   const isPrismaError = err.constructor?.name?.startsWith('Prisma');
+  if (isPrismaError) {
+    console.error('Prisma error details:', JSON.stringify(err, null, 2));
+  }
   const message = isPrismaError
     ? 'Erro de conexão com o banco de dados'
     : 'Erro interno do servidor';
