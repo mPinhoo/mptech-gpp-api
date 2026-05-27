@@ -26,6 +26,15 @@ export class EstoqueController {
     }
   }
 
+  async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await estoqueService.create(req.body);
+      res.status(201).json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async entrada(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await estoqueService.entrada(req.body);

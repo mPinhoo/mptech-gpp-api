@@ -44,19 +44,28 @@ model Produto {
   status      StatusProduto @default(ATIVO)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
-  estoque     Estoque?
   itensPedido ItemPedido[]
 }
 
-model Estoque {
-  id               String   @id @default(uuid())
-  produtoId        String   @unique
-  produto          Produto  @relation(fields: [produtoId], references: [id])
-  quantidade       Int
-  quantidadeMinima Int
-  unidade          String   @default("un")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+model MateriaPrima {
+  id               String    @id @default(uuid())
+  nome             String
+  unidade          String    @default("un")
+  precoCusto       Decimal   @db.Decimal(10, 2) @default(0)
+  quantidade       Int       @default(0)
+  quantidadeMinima Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  despesas         Despesa[]
+}
+
+model Despesa {
+  id             String        @id @default(uuid())
+  descricao      String
+  valor          Decimal       @db.Decimal(10, 2)
+  materiaPrimaId String?
+  materiaPrima   MateriaPrima? @relation(fields: [materiaPrimaId], references: [id])
+  createdAt      DateTime      @default(now())
 }
 
 enum StatusPedido {

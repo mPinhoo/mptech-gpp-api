@@ -149,38 +149,19 @@ export class PedidosService {
     const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0);
     const numero = await this.generateNumero();
 
-    const pedido = await prisma.$transaction(async (tx) => {
-      for (const item of data.itens) {
-        const estoque = await tx.estoque.findUnique({ where: { produtoId: item.produtoId } });
-        if (!estoque || estoque.quantidade < item.quantidade) {
-          const produto = produtoMap.get(item.produtoId)!;
-          throw new AppError(
-            `Estoque insuficiente para o produto "${produto.nome}"`,
-            400,
-            'INSUFFICIENT_STOCK'
-          );
-        }
-
-        await tx.estoque.update({
-          where: { produtoId: item.produtoId },
-          data: { quantidade: { decrement: item.quantidade } },
-        });
-      }
-
-      return tx.pedido.create({
-        data: {
-          numero,
-          clienteId: data.clienteId,
-          dataPedido: new Date(data.dataPedido),
-          prazoEntrega: new Date(data.prazoEntrega),
-          valorTotal: new Decimal(valorTotal),
-          itens: { create: itensComPreco },
-        },
-        include: {
-          cliente: { select: { nome: true } },
-          itens: { include: { produto: { select: { nome: true } } } },
-        },
-      });
+    const pedido = await prisma.pedido.create({
+      data: {
+        numero,
+        clienteId: data.clienteId,
+        dataPedido: new Date(data.dataPedido),
+        prazoEntrega: new Date(data.prazoEntrega),
+        valorTotal: new Decimal(valorTotal),
+        itens: { create: itensComPreco },
+      },
+      include: {
+        cliente: { select: { nome: true } },
+        itens: { include: { produto: { select: { nome: true } } } },
+      },
     });
 
     return {
@@ -243,20 +224,6 @@ export class PedidosService {
       const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0);
 
       await prisma.$transaction(async (tx) => {
-        for (const oldItem of existing.itens) {
-          await tx.estoque.update({
-            where: { produtoId: oldItem.produtoId },
-            data: { quantidade: { increment: oldItem.quantidade } },
-          });
-        }
-
-        for (const item of data.itens!) {
-          await tx.estoque.update({
-            where: { produtoId: item.produtoId },
-            data: { quantidade: { decrement: item.quantidade } },
-          });
-        }
-
         await tx.itemPedido.deleteMany({ where: { pedidoId: id } });
 
         await tx.pedido.update({
@@ -276,35 +243,16 @@ export class PedidosService {
   }
 
   async updateStatus(id: string, status: string) {
-    const existing = await prisma.pedido.findUnique({
-      where: { id },
-      include: { itens: true },
-    });
+    const existing = await prisma.pedido.findUnique({ where: { id } });
 
     if (!existing) {
       throw new NotFoundError('Pedido');
     }
 
-    if (status === 'CANCELADO' && existing.status !== 'CANCELADO') {
-      await prisma.$transaction(async (tx) => {
-        for (const item of existing.itens) {
-          await tx.estoque.update({
-            where: { produtoId: item.produtoId },
-            data: { quantidade: { increment: item.quantidade } },
-          });
-        }
-
-        await tx.pedido.update({
-          where: { id },
-          data: { status: 'CANCELADO' },
-        });
-      });
-    } else {
-      await prisma.pedido.update({
-        where: { id },
-        data: { status: status as 'PENDENTE' | 'APROVADO' | 'CONCLUIDO' | 'CANCELADO' },
-      });
-    }
+    await prisma.pedido.update({
+      where: { id },
+      data: { status: status as 'PENDENTE' | 'APROVADO' | 'CONCLUIDO' | 'CANCELADO' },
+    });
 
     return this.findById(id);
   }

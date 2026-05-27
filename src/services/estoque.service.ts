@@ -1,6 +1,12 @@
+import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
-import { EntradaEstoqueInput, SaidaEstoqueInput, UpdateEstoqueInput } from '../schemas/estoque.schema.js';
+import {
+  CreateMateriaPrimaInput,
+  EntradaEstoqueInput,
+  SaidaEstoqueInput,
+  UpdateEstoqueInput,
+} from '../schemas/estoque.schema.js';
 
 function calcularStatus(quantidade: number, quantidadeMinima: number): string {
   if (quantidade <= 0) return 'Crítico';
@@ -17,29 +23,27 @@ export class EstoqueService {
     const where: Record<string, unknown> = {};
 
     if (filters.search) {
-      where.produto = {
-        nome: { contains: filters.search, mode: 'insensitive' },
-      };
+      where.nome = { contains: filters.search, mode: 'insensitive' };
     }
 
     const [itens, total] = await Promise.all([
-      prisma.estoque.findMany({
+      prisma.materiaPrima.findMany({
         where,
         skip,
         take: limit,
-        include: { produto: { select: { nome: true } } },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.estoque.count({ where }),
+      prisma.materiaPrima.count({ where }),
     ]);
 
     return {
       data: itens.map((item) => ({
         id: item.id,
-        produto: item.produto.nome,
+        nome: item.nome,
+        unidade: item.unidade,
+        precoCusto: Number(item.precoCusto),
         quantidade: item.quantidade,
         minimo: item.quantidadeMinima,
-        unidade: item.unidade,
         status: calcularStatus(item.quantidade, item.quantidadeMinima),
       })),
       meta: { page, limit, total },
@@ -47,99 +51,121 @@ export class EstoqueService {
   }
 
   async findById(id: string) {
-    const item = await prisma.estoque.findUnique({
-      where: { id },
-      include: { produto: { select: { nome: true } } },
-    });
+    const item = await prisma.materiaPrima.findUnique({ where: { id } });
 
     if (!item) {
-      throw new NotFoundError('Item de estoque');
+      throw new NotFoundError('Matéria-prima');
     }
 
     return {
       id: item.id,
-      produtoId: item.produtoId,
-      produto: item.produto.nome,
+      nome: item.nome,
+      unidade: item.unidade,
+      precoCusto: Number(item.precoCusto),
       quantidade: item.quantidade,
       minimo: item.quantidadeMinima,
+      status: calcularStatus(item.quantidade, item.quantidadeMinima),
+    };
+  }
+
+  async create(data: CreateMateriaPrimaInput) {
+    const item = await prisma.materiaPrima.create({ data });
+
+    return {
+      id: item.id,
+      nome: item.nome,
       unidade: item.unidade,
+      precoCusto: Number(item.precoCusto),
+      quantidade: item.quantidade,
+      minimo: item.quantidadeMinima,
       status: calcularStatus(item.quantidade, item.quantidadeMinima),
     };
   }
 
   async entrada(data: EntradaEstoqueInput) {
-    const estoque = await prisma.estoque.findUnique({
-      where: { produtoId: data.produtoId },
+    const item = await prisma.materiaPrima.findUnique({
+      where: { id: data.materiaPrimaId },
     });
 
-    if (!estoque) {
-      throw new NotFoundError('Estoque do produto');
+    if (!item) {
+      throw new NotFoundError('Matéria-prima');
     }
 
-    const updated = await prisma.estoque.update({
-      where: { produtoId: data.produtoId },
-      data: { quantidade: { increment: data.quantidade } },
-      include: { produto: { select: { nome: true } } },
-    });
+    const custoEntrada = Number(item.precoCusto) * data.quantidade;
+
+    const [updated] = await prisma.$transaction([
+      prisma.materiaPrima.update({
+        where: { id: data.materiaPrimaId },
+        data: { quantidade: { increment: data.quantidade } },
+      }),
+      prisma.despesa.create({
+        data: {
+          descricao: `Entrada estoque: ${item.nome} (x${data.quantidade})`,
+          valor: new Decimal(custoEntrada),
+          materiaPrimaId: data.materiaPrimaId,
+        },
+      }),
+    ]);
 
     return {
       id: updated.id,
-      produto: updated.produto.nome,
+      nome: updated.nome,
+      unidade: updated.unidade,
+      precoCusto: Number(updated.precoCusto),
       quantidade: updated.quantidade,
       minimo: updated.quantidadeMinima,
-      unidade: updated.unidade,
       status: calcularStatus(updated.quantidade, updated.quantidadeMinima),
     };
   }
 
   async saida(data: SaidaEstoqueInput) {
-    const estoque = await prisma.estoque.findUnique({
-      where: { produtoId: data.produtoId },
+    const item = await prisma.materiaPrima.findUnique({
+      where: { id: data.materiaPrimaId },
     });
 
-    if (!estoque) {
-      throw new NotFoundError('Estoque do produto');
+    if (!item) {
+      throw new NotFoundError('Matéria-prima');
     }
 
-    if (estoque.quantidade < data.quantidade) {
+    if (item.quantidade < data.quantidade) {
       throw new AppError('Quantidade insuficiente em estoque', 400, 'INSUFFICIENT_STOCK');
     }
 
-    const updated = await prisma.estoque.update({
-      where: { produtoId: data.produtoId },
+    const updated = await prisma.materiaPrima.update({
+      where: { id: data.materiaPrimaId },
       data: { quantidade: { decrement: data.quantidade } },
-      include: { produto: { select: { nome: true } } },
     });
 
     return {
       id: updated.id,
-      produto: updated.produto.nome,
+      nome: updated.nome,
+      unidade: updated.unidade,
+      precoCusto: Number(updated.precoCusto),
       quantidade: updated.quantidade,
       minimo: updated.quantidadeMinima,
-      unidade: updated.unidade,
       status: calcularStatus(updated.quantidade, updated.quantidadeMinima),
     };
   }
 
   async update(id: string, data: UpdateEstoqueInput) {
-    const item = await prisma.estoque.findUnique({ where: { id } });
+    const existing = await prisma.materiaPrima.findUnique({ where: { id } });
 
-    if (!item) {
-      throw new NotFoundError('Item de estoque');
+    if (!existing) {
+      throw new NotFoundError('Matéria-prima');
     }
 
-    const updated = await prisma.estoque.update({
+    const updated = await prisma.materiaPrima.update({
       where: { id },
       data,
-      include: { produto: { select: { nome: true } } },
     });
 
     return {
       id: updated.id,
-      produto: updated.produto.nome,
+      nome: updated.nome,
+      unidade: updated.unidade,
+      precoCusto: Number(updated.precoCusto),
       quantidade: updated.quantidade,
       minimo: updated.quantidadeMinima,
-      unidade: updated.unidade,
       status: calcularStatus(updated.quantidade, updated.quantidadeMinima),
     };
   }
