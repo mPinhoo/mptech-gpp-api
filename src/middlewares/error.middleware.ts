@@ -18,12 +18,18 @@ export function errorMiddleware(
     return;
   }
 
-  console.error('Unexpected error:', err);
+  console.error('Unexpected error:', err.message);
+  console.error('Stack:', err.stack);
+
+  const isPrismaError = err.constructor?.name?.startsWith('Prisma');
+  const message = isPrismaError
+    ? 'Erro de conexão com o banco de dados'
+    : 'Erro interno do servidor';
 
   res.status(500).json({
     success: false,
     error: {
-      message: 'Erro interno do servidor',
+      message,
       code: 'INTERNAL_ERROR',
     },
   });
