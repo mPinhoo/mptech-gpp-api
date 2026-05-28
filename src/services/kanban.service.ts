@@ -1,5 +1,5 @@
 import prisma from '../utils/prisma.js';
-import { NotFoundError } from '../utils/errors.js';
+import { NotFoundError, AppError } from '../utils/errors.js';
 import type {
   CreateColunaInput,
   UpdateColunaInput,
@@ -72,6 +72,7 @@ export class KanbanService {
   async updateColuna(id: string, data: UpdateColunaInput) {
     const exists = await prisma.kanbanColuna.findUnique({ where: { id } });
     if (!exists) throw new NotFoundError('Coluna');
+    if (exists.sistema) throw new AppError('Colunas do sistema não podem ser editadas', 400);
 
     const coluna = await prisma.kanbanColuna.update({
       where: { id },
@@ -101,6 +102,7 @@ export class KanbanService {
   async deleteColuna(id: string) {
     const exists = await prisma.kanbanColuna.findUnique({ where: { id } });
     if (!exists) throw new NotFoundError('Coluna');
+    if (exists.sistema) throw new AppError('Colunas do sistema não podem ser excluídas', 400);
 
     await prisma.$transaction([
       prisma.pedido.updateMany({
@@ -138,6 +140,7 @@ function formatColuna(c: Record<string, unknown>) {
     id: c.id,
     nome: c.nome,
     ordem: c.ordem,
+    sistema: c.sistema,
     pedidos: pedidos.map(formatPedidoKanban),
   };
 }

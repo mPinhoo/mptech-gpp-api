@@ -22,7 +22,7 @@ export class KanbanController {
 
   async updateColuna(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await kanbanService.updateColuna(req.params.id, req.body);
+      const result = await kanbanService.updateColuna(req.params.id as string, req.body);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -40,7 +40,7 @@ export class KanbanController {
 
   async deleteColuna(req: Request, res: Response, next: NextFunction) {
     try {
-      await kanbanService.deleteColuna(req.params.id);
+      await kanbanService.deleteColuna(req.params.id as string);
       res.json({ success: true, data: { message: 'Coluna excluída' } });
     } catch (err) {
       next(err);
@@ -50,7 +50,7 @@ export class KanbanController {
   async moverPedido(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await kanbanService.moverPedido(
-        req.params.id,
+        req.params.id as string,
         req.body.kanbanColunaId
       );
       res.json({ success: true, data: result });

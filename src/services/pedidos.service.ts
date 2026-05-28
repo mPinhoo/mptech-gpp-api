@@ -38,7 +38,10 @@ export class PedidosService {
         where,
         skip,
         take: limit,
-        include: { cliente: { select: { nome: true } } },
+        include: {
+          cliente: { select: { nome: true } },
+          kanbanColuna: { select: { nome: true } },
+        },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.pedido.count({ where }),
@@ -59,6 +62,8 @@ export class PedidosService {
         data: formatDate(p.dataPedido),
         valor: formatCurrency(Number(p.valorTotal)),
         status: statusMap[p.status] || p.status,
+        statusOriginal: p.status,
+        kanbanColuna: p.kanbanColuna?.nome || null,
       })),
       meta: { page, limit, total },
     };
