@@ -7,6 +7,7 @@ import estoqueRoutes from './estoque.routes.js';
 import pedidosRoutes from './pedidos.routes.js';
 import clientesRoutes from './clientes.routes.js';
 import precificacaoRoutes from './precificacao.routes.js';
+import kanbanRoutes from './kanban.routes.js';
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/estoque', authMiddleware, estoqueRoutes);
 router.use('/pedidos', authMiddleware, pedidosRoutes);
 router.use('/clientes', authMiddleware, clientesRoutes);
 router.use('/precificacao', authMiddleware, precificacaoRoutes);
+router.use('/kanban', authMiddleware, kanbanRoutes);
 
 export default router;

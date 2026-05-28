@@ -77,18 +77,29 @@ enum StatusPedido {
 }
 
 model Pedido {
-  id             String       @id @default(uuid())
-  numero         String       @unique
-  clienteId      String
-  cliente        Cliente      @relation(fields: [clienteId], references: [id])
-  dataPedido     DateTime
-  prazoEntrega   DateTime
-  status         StatusPedido @default(PENDENTE)
-  valorTotal     Decimal      @db.Decimal(10, 2)
-  enviadoCliente Boolean      @default(false)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  itens          ItemPedido[]
+  id              String        @id @default(uuid())
+  numero          String        @unique
+  clienteId       String
+  cliente         Cliente       @relation(fields: [clienteId], references: [id])
+  dataPedido      DateTime
+  prazoEntrega    DateTime
+  status          StatusPedido  @default(PENDENTE)
+  valorTotal      Decimal       @db.Decimal(10, 2)
+  enviadoCliente  Boolean       @default(false)
+  kanbanColunaId  String?
+  kanbanColuna    KanbanColuna? @relation(fields: [kanbanColunaId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  itens           ItemPedido[]
+}
+
+model KanbanColuna {
+  id        String   @id @default(uuid())
+  nome      String
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pedidos   Pedido[]
 }
 
 model ItemPedido {
