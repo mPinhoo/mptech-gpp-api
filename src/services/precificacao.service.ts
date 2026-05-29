@@ -30,8 +30,11 @@ export class PrecificacaoService {
       return tx.configPrecificacao.update({
         where: { id: config!.id },
         data: {
-          tempoProducao: data.tempoProducao,
-          valorHora: data.valorHora,
+          salarioMensal: data.salarioMensal,
+          horasSemanais: data.horasSemanais,
+          semanasMes: data.semanasMes,
+          diasTrabalhados: data.diasTrabalhados,
+          horasDia: data.horasDia,
           taxaMarketplace: data.taxaMarketplace,
           taxaCartao: data.taxaCartao,
           impostos: data.impostos,
@@ -56,8 +59,11 @@ function formatConfig(config: Record<string, unknown>) {
   const custosFixos = (config.custosFixos as Array<Record<string, unknown>>) ?? [];
   return {
     id: config.id,
-    tempoProducao: Number(config.tempoProducao),
-    valorHora: Number(config.valorHora),
+    salarioMensal: Number(config.salarioMensal),
+    horasSemanais: Number(config.horasSemanais),
+    semanasMes: Number(config.semanasMes),
+    diasTrabalhados: Number(config.diasTrabalhados),
+    horasDia: Number(config.horasDia),
     taxaMarketplace: Number(config.taxaMarketplace),
     taxaCartao: Number(config.taxaCartao),
     impostos: Number(config.impostos),
