@@ -55,8 +55,13 @@ jest.mock('@/utils/prisma', () => ({
   default: mockPrisma,
 }));
 
+jest.mock('@/utils/similarity', () => ({
+  findClienteIdsBySimilarName: jest.fn(),
+}));
+
 import { PedidosService } from '@/services/pedidos.service';
 import { NotFoundError, AppError } from '@/utils/errors';
+import { findClienteIdsBySimilarName } from '@/utils/similarity';
 
 describe('PedidosService', () => {
   let service: PedidosService;
@@ -84,6 +89,46 @@ describe('PedidosService', () => {
       expect(result.data[0].data).toBe('26/05/2026');
       expect(result.data[0].status).toBe('Concluído');
       expect(result.data[0].valor).toContain('R$');
+    });
+
+    it('deve aplicar filtros de numero, cliente, status e data', async () => {
+      (findClienteIdsBySimilarName as jest.Mock).mockResolvedValue(['cliente-1']);
+      mockPrisma.pedido.findMany.mockResolvedValue([]);
+      mockPrisma.pedido.count.mockResolvedValue(0);
+
+      await service.findAll(USER_ID, {
+        numero: 'PED-0001',
+        cliente: 'João',
+        status: 'APROVADO',
+        dataDe: '2026-05-01',
+        dataAte: '2026-05-31',
+      });
+
+      expect(findClienteIdsBySimilarName).toHaveBeenCalledWith(USER_ID, 'João');
+      expect(mockPrisma.pedido.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: USER_ID,
+            numero: { contains: 'PED-0001', mode: 'insensitive' },
+            clienteId: { in: ['cliente-1'] },
+            status: 'APROVADO',
+            dataPedido: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        })
+      );
+    });
+
+    it('deve retornar vazio quando cliente similar não for encontrado', async () => {
+      (findClienteIdsBySimilarName as jest.Mock).mockResolvedValue([]);
+
+      const result = await service.findAll(USER_ID, { cliente: 'Inexistente' });
+
+      expect(result.data).toEqual([]);
+      expect(result.meta.total).toBe(0);
+      expect(mockPrisma.pedido.findMany).not.toHaveBeenCalled();
     });
   });
 

@@ -4,6 +4,7 @@ import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreatePedidoInput, UpdatePedidoInput } from '../schemas/pedido.schema.js';
 import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
+import { findClienteIdsBySimilarName } from '../utils/similarity.js';
 
 function formatDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -34,7 +35,16 @@ function pedidoOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
 }
 
 export class PedidosService {
-  async findAll(userId: string, filters: ListFilters & { status?: string }) {
+  async findAll(
+    userId: string,
+    filters: ListFilters & {
+      status?: string;
+      numero?: string;
+      cliente?: string;
+      dataDe?: string;
+      dataAte?: string;
+    }
+  ) {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
@@ -43,6 +53,33 @@ export class PedidosService {
 
     if (filters.status) {
       where.status = filters.status;
+    }
+
+    if (filters.numero) {
+      where.numero = { contains: filters.numero, mode: 'insensitive' };
+    }
+
+    if (filters.cliente) {
+      const clienteIds = await findClienteIdsBySimilarName(userId, filters.cliente);
+      if (clienteIds.length === 0) {
+        return { data: [], meta: { page, limit, total: 0 } };
+      }
+      where.clienteId = { in: clienteIds };
+    }
+
+    if (filters.dataDe || filters.dataAte) {
+      const dataPedido: Record<string, Date> = {};
+      if (filters.dataDe) {
+        const start = new Date(filters.dataDe);
+        start.setHours(0, 0, 0, 0);
+        dataPedido.gte = start;
+      }
+      if (filters.dataAte) {
+        const end = new Date(filters.dataAte);
+        end.setHours(23, 59, 59, 999);
+        dataPedido.lte = end;
+      }
+      where.dataPedido = dataPedido;
     }
 
     if (filters.search) {

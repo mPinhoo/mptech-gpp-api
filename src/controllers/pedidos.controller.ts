@@ -5,10 +5,15 @@ import { getUserId } from '../utils/tenant.js';
 export class PedidosController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, search, page, limit, sortBy, sortOrder } = req.query;
+      const { status, search, numero, cliente, dataDe, dataAte, page, limit, sortBy, sortOrder } =
+        req.query;
       const result = await pedidosService.findAll(getUserId(req), {
         status: status as string | undefined,
         search: search as string | undefined,
+        numero: numero as string | undefined,
+        cliente: cliente as string | undefined,
+        dataDe: dataDe as string | undefined,
+        dataAte: dataAte as string | undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         sortBy: sortBy as string | undefined,
