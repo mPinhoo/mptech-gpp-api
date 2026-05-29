@@ -19,7 +19,11 @@ function getTransporter() {
 }
 
 function getFromAddress() {
-  return process.env.EMAIL_FROM || process.env.SMTP_USER || 'noreply@zentra.com.br';
+  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
+  if (!from) {
+    throw new Error('Configuração de e-mail incompleta');
+  }
+  return from;
 }
 
 export async function sendPasswordResetEmail(to: string, resetUrl: string, nome: string) {
@@ -52,7 +56,11 @@ export async function sendSupportContactEmail(params: {
   descricao: string;
 }) {
   const transporter = getTransporter();
-  const supportEmail = process.env.SUPPORT_EMAIL || 'matheuspinho.dev@gmail.com';
+  const supportEmail = process.env.SUPPORT_EMAIL;
+
+  if (!supportEmail) {
+    throw new Error('Configuração de e-mail incompleta');
+  }
 
   await transporter.sendMail({
     from: `"Zentra Suporte" <${getFromAddress()}>`,
