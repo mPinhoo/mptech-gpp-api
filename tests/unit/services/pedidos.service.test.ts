@@ -173,6 +173,41 @@ describe('PedidosService', () => {
 
       await expect(service.updateStatus(USER_ID, 'invalid', 'APROVADO')).rejects.toThrow(NotFoundError);
     });
+
+    it('deve apagar linkToken ao sair do status APROVADO', async () => {
+      mockPrisma.pedido.findFirst.mockResolvedValue({
+        id: 'pedido-1',
+        status: 'APROVADO',
+        linkToken: 'token-123',
+      });
+      mockPrisma.pedido.update.mockResolvedValue({});
+      mockPrisma.pedido.findFirst
+        .mockResolvedValueOnce({
+          id: 'pedido-1',
+          status: 'APROVADO',
+          linkToken: 'token-123',
+        })
+        .mockResolvedValueOnce({
+          id: 'pedido-1',
+          numero: 'PED-0001',
+          status: 'CONCLUIDO',
+          linkToken: null,
+          enviadoCliente: true,
+          dataPedido: new Date(),
+          prazoEntrega: new Date(),
+          valorTotal: { toString: () => '100' },
+          cliente: { id: 'c1', nome: 'Cliente' },
+          itens: [],
+          extras: [],
+        });
+
+      await service.updateStatus(USER_ID, 'pedido-1', 'CONCLUIDO');
+
+      expect(mockPrisma.pedido.update).toHaveBeenCalledWith({
+        where: { id: 'pedido-1' },
+        data: { status: 'CONCLUIDO', linkToken: null },
+      });
+    });
   });
 
   describe('enviar', () => {

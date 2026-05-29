@@ -325,9 +325,16 @@ export class PedidosService {
       throw new NotFoundError('Pedido');
     }
 
+    const newStatus = status as 'PENDENTE' | 'APROVADO' | 'CONCLUIDO' | 'CANCELADO';
+    const shouldClearLink =
+      existing.status === 'APROVADO' && newStatus !== 'APROVADO';
+
     await prisma.pedido.update({
       where: { id },
-      data: { status: status as 'PENDENTE' | 'APROVADO' | 'CONCLUIDO' | 'CANCELADO' },
+      data: {
+        status: newStatus,
+        ...(shouldClearLink ? { linkToken: null } : {}),
+      },
     });
 
     return this.findById(userId, id);
