@@ -3,7 +3,7 @@ import prisma from '../utils/prisma.js';
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export class DashboardService {
-  async getStats() {
+  async getStats(userId: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -18,13 +18,14 @@ export class DashboardService {
       despesasAnteriorResult,
     ] = await Promise.all([
       prisma.pedido.count({
-        where: { createdAt: { gte: startOfMonth } },
+        where: { userId, createdAt: { gte: startOfMonth } },
       }),
       prisma.pedido.count({
-        where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+        where: { userId, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
       }),
       prisma.pedido.aggregate({
         where: {
+          userId,
           status: 'CONCLUIDO',
           createdAt: { gte: startOfMonth },
         },
@@ -32,17 +33,18 @@ export class DashboardService {
       }),
       prisma.pedido.aggregate({
         where: {
+          userId,
           status: 'CONCLUIDO',
           createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
         },
         _sum: { valorTotal: true },
       }),
       prisma.despesa.aggregate({
-        where: { createdAt: { gte: startOfMonth } },
+        where: { userId, createdAt: { gte: startOfMonth } },
         _sum: { valor: true },
       }),
       prisma.despesa.aggregate({
-        where: { createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
+        where: { userId, createdAt: { gte: startOfLastMonth, lte: endOfLastMonth } },
         _sum: { valor: true },
       }),
     ]);
@@ -81,7 +83,7 @@ export class DashboardService {
     };
   }
 
-  async getChart() {
+  async getChart(userId: string) {
     const now = new Date();
     const months: { mes: string; faturamento: number; despesas: number }[] = [];
 
@@ -92,13 +94,14 @@ export class DashboardService {
       const [fatResult, despResult] = await Promise.all([
         prisma.pedido.aggregate({
           where: {
+            userId,
             status: 'CONCLUIDO',
             createdAt: { gte: date, lte: endDate },
           },
           _sum: { valorTotal: true },
         }),
         prisma.despesa.aggregate({
-          where: { createdAt: { gte: date, lte: endDate } },
+          where: { userId, createdAt: { gte: date, lte: endDate } },
           _sum: { valor: true },
         }),
       ]);

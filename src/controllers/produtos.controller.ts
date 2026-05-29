@@ -1,11 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { produtosService } from '../services/produtos.service.js';
+import { getUserId } from '../utils/tenant.js';
 
 export class ProdutosController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
       const { status, search, page, limit } = req.query;
-      const result = await produtosService.findAll({
+      const result = await produtosService.findAll(getUserId(req), {
         status: status as string | undefined,
         search: search as string | undefined,
         page: page ? Number(page) : undefined,
@@ -20,7 +21,7 @@ export class ProdutosController {
   async findById(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as string;
-      const result = await produtosService.findById(id);
+      const result = await produtosService.findById(getUserId(req), id);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -29,7 +30,7 @@ export class ProdutosController {
 
   async create(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await produtosService.create(req.body);
+      const result = await produtosService.create(getUserId(req), req.body);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -39,7 +40,7 @@ export class ProdutosController {
   async update(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as string;
-      const result = await produtosService.update(id, req.body);
+      const result = await produtosService.update(getUserId(req), id, req.body);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -49,7 +50,7 @@ export class ProdutosController {
   async delete(req: Request, res: Response, next: NextFunction) {
     try {
       const id = req.params.id as string;
-      await produtosService.delete(id);
+      await produtosService.delete(getUserId(req), id);
       res.json({ success: true, data: { message: 'Produto desativado com sucesso' } });
     } catch (err) {
       next(err);

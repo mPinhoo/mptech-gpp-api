@@ -19,6 +19,10 @@ jest.mock('@/utils/jwt', () => ({
   signToken: jest.fn().mockReturnValue('mocked-token'),
 }));
 
+jest.mock('@/services/user-setup.service', () => ({
+  initializeNewUser: jest.fn().mockResolvedValue(undefined),
+}));
+
 import bcrypt from 'bcryptjs';
 import { AuthService } from '@/services/auth.service';
 import { UnauthorizedError, ConflictError } from '@/utils/errors';

@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { kanbanService } from '../services/kanban.service.js';
+import { getUserId } from '../utils/tenant.js';
 
 export class KanbanController {
   async getColunas(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await kanbanService.getColunas();
+      const result = await kanbanService.getColunas(getUserId(req));
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -13,7 +14,7 @@ export class KanbanController {
 
   async createColuna(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await kanbanService.createColuna(req.body);
+      const result = await kanbanService.createColuna(getUserId(req), req.body);
       res.status(201).json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -22,7 +23,11 @@ export class KanbanController {
 
   async updateColuna(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await kanbanService.updateColuna(req.params.id as string, req.body);
+      const result = await kanbanService.updateColuna(
+        getUserId(req),
+        req.params.id as string,
+        req.body
+      );
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -31,7 +36,7 @@ export class KanbanController {
 
   async reorderColunas(req: Request, res: Response, next: NextFunction) {
     try {
-      await kanbanService.reorderColunas(req.body);
+      await kanbanService.reorderColunas(getUserId(req), req.body);
       res.json({ success: true, data: { message: 'Colunas reordenadas' } });
     } catch (err) {
       next(err);
@@ -40,7 +45,7 @@ export class KanbanController {
 
   async deleteColuna(req: Request, res: Response, next: NextFunction) {
     try {
-      await kanbanService.deleteColuna(req.params.id as string);
+      await kanbanService.deleteColuna(getUserId(req), req.params.id as string);
       res.json({ success: true, data: { message: 'Coluna excluída' } });
     } catch (err) {
       next(err);
@@ -50,6 +55,7 @@ export class KanbanController {
   async moverPedido(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await kanbanService.moverPedido(
+        getUserId(req),
         req.params.id as string,
         req.body.kanbanColunaId
       );

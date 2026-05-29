@@ -3,6 +3,7 @@ import prisma from '../utils/prisma.js';
 import { signToken } from '../utils/jwt.js';
 import { UnauthorizedError, ConflictError } from '../utils/errors.js';
 import { LoginInput, RegisterInput } from '../schemas/auth.schema.js';
+import { initializeNewUser } from './user-setup.service.js';
 
 export class AuthService {
   async login(data: LoginInput) {
@@ -49,6 +50,8 @@ export class AuthService {
         senha: hashedPassword,
       },
     });
+
+    await initializeNewUser(user.id);
 
     const token = signToken({ userId: user.id, email: user.email });
 

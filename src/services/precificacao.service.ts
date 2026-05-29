@@ -1,34 +1,36 @@
 import prisma from '../utils/prisma.js';
 import type { UpdateConfigPrecificacaoInput } from '../schemas/precificacao.schema.js';
+import { ensureUserDefaults } from './user-setup.service.js';
 
 export class PrecificacaoService {
-  async getConfig() {
-    let config = await prisma.configPrecificacao.findFirst({
+  async getConfig(userId: string) {
+    await ensureUserDefaults(userId);
+
+    const config = await prisma.configPrecificacao.findUnique({
+      where: { userId },
       include: { custosFixos: true },
     });
 
     if (!config) {
-      config = await prisma.configPrecificacao.create({
-        data: {},
-        include: { custosFixos: true },
-      });
+      throw new Error('Configuração não encontrada');
     }
 
     return formatConfig(config);
   }
 
-  async updateConfig(data: UpdateConfigPrecificacaoInput) {
-    let config = await prisma.configPrecificacao.findFirst();
+  async updateConfig(userId: string, data: UpdateConfigPrecificacaoInput) {
+    await ensureUserDefaults(userId);
 
+    const config = await prisma.configPrecificacao.findUnique({ where: { userId } });
     if (!config) {
-      config = await prisma.configPrecificacao.create({ data: {} });
+      throw new Error('Configuração não encontrada');
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      await tx.custoFixoConfig.deleteMany({ where: { configId: config!.id } });
+      await tx.custoFixoConfig.deleteMany({ where: { configId: config.id } });
 
       return tx.configPrecificacao.update({
-        where: { id: config!.id },
+        where: { id: config.id },
         data: {
           salarioMensal: data.salarioMensal,
           horasSemanais: data.horasSemanais,

@@ -1,6 +1,11 @@
+const USER_ID = 'user-1';
+
 const mockPrisma = {
   pedido: {
     count: jest.fn(),
+    aggregate: jest.fn(),
+  },
+  despesa: {
     aggregate: jest.fn(),
   },
 };
@@ -24,8 +29,9 @@ describe('DashboardService', () => {
     it('deve retornar estatísticas do mês', async () => {
       mockPrisma.pedido.count.mockResolvedValue(10);
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 5000 } });
+      mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 1000 } });
 
-      const result = await service.getStats();
+      const result = await service.getStats(USER_ID);
 
       expect(result).toHaveProperty('totalPedidos');
       expect(result).toHaveProperty('faturamento');
@@ -37,8 +43,9 @@ describe('DashboardService', () => {
     it('deve calcular saldo como faturamento - despesas', async () => {
       mockPrisma.pedido.count.mockResolvedValue(5);
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 20000 } });
+      mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 5000 } });
 
-      const result = await service.getStats();
+      const result = await service.getStats(USER_ID);
 
       expect(result.saldoMes).toBe(result.faturamento - result.despesas);
     });
@@ -47,8 +54,9 @@ describe('DashboardService', () => {
   describe('getChart', () => {
     it('deve retornar dados dos últimos 5 meses', async () => {
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 10000 } });
+      mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 2000 } });
 
-      const result = await service.getChart();
+      const result = await service.getChart(USER_ID);
 
       expect(result).toHaveLength(5);
       expect(result[0]).toHaveProperty('mes');

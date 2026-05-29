@@ -8,26 +8,37 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  nome      String
-  email     String   @unique
-  senha     String
-  ativo     Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String               @id @default(uuid())
+  nome                String
+  email               String               @unique
+  senha               String
+  ativo               Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  clientes            Cliente[]
+  produtos            Produto[]
+  materiasPrimas      MateriaPrima[]
+  pedidos             Pedido[]
+  despesas            Despesa[]
+  kanbanColunas       KanbanColuna[]
+  configPrecificacao  ConfigPrecificacao?
 }
 
 model Cliente {
-  id             String          @id @default(uuid())
-  nome           String
-  email          String?
-  telefone       String?
-  documento      String?
-  endereco       String?
-  ativo          Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  pedidos        Pedido[]
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome      String
+  email     String?
+  telefone  String?
+  documento String?
+  endereco  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pedidos   Pedido[]
+
+  @@index([userId])
 }
 
 enum StatusProduto {
@@ -37,22 +48,28 @@ enum StatusProduto {
 }
 
 model Produto {
-  id          String        @id @default(uuid())
-  nome        String
-  categoria   String
-  descricao   String?
-  tempoProducao Decimal     @db.Decimal(10, 2) @default(1)
-  margemLucro   Decimal     @db.Decimal(5, 2)  @default(0)
-  preco         Decimal     @db.Decimal(10, 2)
-  status      StatusProduto @default(ATIVO)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  itensPedido ItemPedido[]
-  materiais   MaterialProduto[]
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome          String
+  categoria     String
+  descricao     String?
+  tempoProducao Decimal           @db.Decimal(10, 2) @default(1)
+  margemLucro   Decimal           @db.Decimal(5, 2)  @default(0)
+  preco         Decimal           @db.Decimal(10, 2)
+  status        StatusProduto     @default(ATIVO)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  itensPedido   ItemPedido[]
+  materiais     MaterialProduto[]
+
+  @@index([userId])
 }
 
 model MateriaPrima {
   id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   nome             String
   unidade          String            @default("un")
   precoCusto       Decimal           @db.Decimal(10, 2) @default(0)
@@ -62,6 +79,8 @@ model MateriaPrima {
   updatedAt        DateTime          @updatedAt
   despesas         Despesa[]
   materiaisProduto MaterialProduto[]
+
+  @@index([userId])
 }
 
 model MaterialProduto {
@@ -77,11 +96,15 @@ model MaterialProduto {
 
 model Despesa {
   id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   descricao      String
   valor          Decimal       @db.Decimal(10, 2)
   materiaPrimaId String?
   materiaPrima   MateriaPrima? @relation(fields: [materiaPrimaId], references: [id])
   createdAt      DateTime      @default(now())
+
+  @@index([userId])
 }
 
 enum StatusPedido {
@@ -92,40 +115,49 @@ enum StatusPedido {
 }
 
 model Pedido {
-  id              String        @id @default(uuid())
-  numero          String        @unique
-  clienteId       String
-  cliente         Cliente       @relation(fields: [clienteId], references: [id])
-  dataPedido      DateTime
-  prazoEntrega    DateTime
-  status          StatusPedido  @default(PENDENTE)
-  valorTotal      Decimal       @db.Decimal(10, 2)
-  enviadoCliente  Boolean       @default(false)
-  linkToken       String?       @unique
-  kanbanColunaId  String?
-  kanbanColuna    KanbanColuna? @relation(fields: [kanbanColunaId], references: [id], onDelete: SetNull)
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  itens           ItemPedido[]
-  extras          ExtraPedido[]
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  numero         String
+  clienteId      String
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  dataPedido     DateTime
+  prazoEntrega   DateTime
+  status         StatusPedido  @default(PENDENTE)
+  valorTotal     Decimal       @db.Decimal(10, 2)
+  enviadoCliente Boolean       @default(false)
+  linkToken      String?       @unique
+  kanbanColunaId String?
+  kanbanColuna   KanbanColuna? @relation(fields: [kanbanColunaId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  itens          ItemPedido[]
+  extras         ExtraPedido[]
+
+  @@unique([userId, numero])
+  @@index([userId])
 }
 
 model ExtraPedido {
-  id        String  @id @default(uuid())
-  pedidoId  String
-  pedido    Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
-  nome      String
-  valor     Decimal @db.Decimal(10, 2)
+  id       String  @id @default(uuid())
+  pedidoId String
+  pedido   Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  nome     String
+  valor    Decimal @db.Decimal(10, 2)
 }
 
 model KanbanColuna {
   id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   nome      String
   ordem     Int      @default(0)
   sistema   Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   pedidos   Pedido[]
+
+  @@index([userId])
 }
 
 model ItemPedido {
@@ -140,25 +172,27 @@ model ItemPedido {
 }
 
 model ConfigPrecificacao {
-  id              String   @id @default(uuid())
-  salarioMensal   Decimal  @db.Decimal(10, 2) @default(0)
-  horasSemanais   Decimal  @db.Decimal(5, 2)  @default(40)
-  semanasMes      Decimal  @db.Decimal(5, 2)  @default(4)
-  diasTrabalhados Int      @default(22)
-  horasDia        Decimal  @db.Decimal(5, 2)  @default(8)
-  taxaMarketplace Decimal  @db.Decimal(5, 2)  @default(0)
-  taxaCartao      Decimal  @db.Decimal(5, 2)  @default(0)
-  impostos        Decimal  @db.Decimal(5, 2)  @default(0)
-  taxasAdicionais Decimal  @db.Decimal(5, 2)  @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id              String            @id @default(uuid())
+  userId          String            @unique
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salarioMensal   Decimal           @db.Decimal(10, 2) @default(0)
+  horasSemanais   Decimal           @db.Decimal(5, 2)  @default(40)
+  semanasMes      Decimal           @db.Decimal(5, 2)  @default(4)
+  diasTrabalhados Int               @default(22)
+  horasDia        Decimal           @db.Decimal(5, 2)  @default(8)
+  taxaMarketplace Decimal           @db.Decimal(5, 2)  @default(0)
+  taxaCartao      Decimal           @db.Decimal(5, 2)  @default(0)
+  impostos        Decimal           @db.Decimal(5, 2)  @default(0)
+  taxasAdicionais Decimal           @db.Decimal(5, 2)  @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   custosFixos     CustoFixoConfig[]
 }
 
 model CustoFixoConfig {
-  id               String            @id @default(uuid())
-  configId         String
-  config           ConfigPrecificacao @relation(fields: [configId], references: [id], onDelete: Cascade)
-  nome             String
-  valor            Decimal           @db.Decimal(10, 2)
+  id       String             @id @default(uuid())
+  configId String
+  config   ConfigPrecificacao @relation(fields: [configId], references: [id], onDelete: Cascade)
+  nome     String
+  valor    Decimal            @db.Decimal(10, 2)
 }

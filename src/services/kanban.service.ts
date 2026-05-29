@@ -5,6 +5,7 @@ import type {
   UpdateColunaInput,
   ReorderColunasInput,
 } from '../schemas/kanban.schema.js';
+import { ensureUserDefaults } from './user-setup.service.js';
 
 const pedidoSelect = {
   id: true,
@@ -26,12 +27,15 @@ const pedidoSelect = {
 };
 
 export class KanbanService {
-  async getColunas() {
+  async getColunas(userId: string) {
+    await ensureUserDefaults(userId);
+
     const colunas = await prisma.kanbanColuna.findMany({
+      where: { userId },
       orderBy: { ordem: 'asc' },
       include: {
         pedidos: {
-          where: { status: 'APROVADO' },
+          where: { status: 'APROVADO', userId },
           select: pedidoSelect,
           orderBy: { updatedAt: 'desc' },
         },
@@ -39,7 +43,7 @@ export class KanbanService {
     });
 
     const semColuna = await prisma.pedido.findMany({
-      where: { status: 'APROVADO', kanbanColunaId: null },
+      where: { userId, status: 'APROVADO', kanbanColunaId: null },
       select: pedidoSelect,
       orderBy: { updatedAt: 'desc' },
     });
@@ -50,17 +54,18 @@ export class KanbanService {
     };
   }
 
-  async createColuna(data: CreateColunaInput) {
+  async createColuna(userId: string, data: CreateColunaInput) {
     const maxOrdem = await prisma.kanbanColuna.aggregate({
+      where: { userId },
       _max: { ordem: true },
     });
     const ordem = (maxOrdem._max.ordem ?? -1) + 1;
 
     const coluna = await prisma.kanbanColuna.create({
-      data: { nome: data.nome, ordem },
+      data: { userId, nome: data.nome, ordem },
       include: {
         pedidos: {
-          where: { status: 'APROVADO' },
+          where: { status: 'APROVADO', userId },
           select: pedidoSelect,
         },
       },
@@ -69,8 +74,8 @@ export class KanbanService {
     return formatColuna(coluna);
   }
 
-  async updateColuna(id: string, data: UpdateColunaInput) {
-    const exists = await prisma.kanbanColuna.findUnique({ where: { id } });
+  async updateColuna(userId: string, id: string, data: UpdateColunaInput) {
+    const exists = await prisma.kanbanColuna.findFirst({ where: { id, userId } });
     if (!exists) throw new NotFoundError('Coluna');
     if (exists.sistema) throw new AppError('Colunas do sistema não podem ser editadas', 400);
 
@@ -79,7 +84,7 @@ export class KanbanService {
       data: { nome: data.nome },
       include: {
         pedidos: {
-          where: { status: 'APROVADO' },
+          where: { status: 'APROVADO', userId },
           select: pedidoSelect,
         },
       },
@@ -88,7 +93,16 @@ export class KanbanService {
     return formatColuna(coluna);
   }
 
-  async reorderColunas(data: ReorderColunasInput) {
+  async reorderColunas(userId: string, data: ReorderColunasInput) {
+    const ids = data.colunas.map((c) => c.id);
+    const colunas = await prisma.kanbanColuna.findMany({
+      where: { id: { in: ids }, userId },
+    });
+
+    if (colunas.length !== ids.length) {
+      throw new NotFoundError('Coluna');
+    }
+
     await prisma.$transaction(
       data.colunas.map((c) =>
         prisma.kanbanColuna.update({
@@ -99,27 +113,27 @@ export class KanbanService {
     );
   }
 
-  async deleteColuna(id: string) {
-    const exists = await prisma.kanbanColuna.findUnique({ where: { id } });
+  async deleteColuna(userId: string, id: string) {
+    const exists = await prisma.kanbanColuna.findFirst({ where: { id, userId } });
     if (!exists) throw new NotFoundError('Coluna');
     if (exists.sistema) throw new AppError('Colunas do sistema não podem ser excluídas', 400);
 
     await prisma.$transaction([
       prisma.pedido.updateMany({
-        where: { kanbanColunaId: id },
+        where: { kanbanColunaId: id, userId },
         data: { kanbanColunaId: null },
       }),
       prisma.kanbanColuna.delete({ where: { id } }),
     ]);
   }
 
-  async moverPedido(pedidoId: string, kanbanColunaId: string | null) {
-    const pedido = await prisma.pedido.findUnique({ where: { id: pedidoId } });
+  async moverPedido(userId: string, pedidoId: string, kanbanColunaId: string | null) {
+    const pedido = await prisma.pedido.findFirst({ where: { id: pedidoId, userId } });
     if (!pedido) throw new NotFoundError('Pedido');
 
     if (kanbanColunaId) {
-      const coluna = await prisma.kanbanColuna.findUnique({
-        where: { id: kanbanColunaId },
+      const coluna = await prisma.kanbanColuna.findFirst({
+        where: { id: kanbanColunaId, userId },
       });
       if (!coluna) throw new NotFoundError('Coluna');
     }

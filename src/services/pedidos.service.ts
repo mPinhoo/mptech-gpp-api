@@ -16,12 +16,12 @@ function formatCurrency(value: number): string {
 }
 
 export class PedidosService {
-  async findAll(filters: { status?: string; search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: { status?: string; search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId };
 
     if (filters.status) {
       where.status = filters.status;
@@ -70,9 +70,9 @@ export class PedidosService {
     };
   }
 
-  async findById(id: string) {
-    const pedido = await prisma.pedido.findUnique({
-      where: { id },
+  async findById(userId: string, id: string) {
+    const pedido = await prisma.pedido.findFirst({
+      where: { id, userId },
       include: {
         cliente: true,
         itens: {
@@ -115,8 +115,9 @@ export class PedidosService {
     };
   }
 
-  private async generateNumero(): Promise<string> {
+  private async generateNumero(userId: string): Promise<string> {
     const last = await prisma.pedido.findFirst({
+      where: { userId },
       orderBy: { createdAt: 'desc' },
       select: { numero: true },
     });
@@ -130,15 +131,17 @@ export class PedidosService {
     return `PED-${String(nextNum).padStart(4, '0')}`;
   }
 
-  async create(data: CreatePedidoInput) {
-    const cliente = await prisma.cliente.findUnique({ where: { id: data.clienteId } });
-    if (!cliente || !cliente.ativo) {
+  async create(userId: string, data: CreatePedidoInput) {
+    const cliente = await prisma.cliente.findFirst({
+      where: { id: data.clienteId, userId, ativo: true },
+    });
+    if (!cliente) {
       throw new NotFoundError('Cliente');
     }
 
     const produtoIds = data.itens.map((i) => i.produtoId);
     const produtos = await prisma.produto.findMany({
-      where: { id: { in: produtoIds }, status: 'ATIVO' },
+      where: { id: { in: produtoIds }, userId, status: 'ATIVO' },
     });
 
     if (produtos.length !== produtoIds.length) {
@@ -161,10 +164,11 @@ export class PedidosService {
 
     const totalExtras = (data.extras ?? []).reduce((sum, e) => sum + e.valor, 0);
     const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0) + totalExtras;
-    const numero = await this.generateNumero();
+    const numero = await this.generateNumero(userId);
 
     const pedido = await prisma.pedido.create({
       data: {
+        userId,
         numero,
         clienteId: data.clienteId,
         dataPedido: new Date(data.dataPedido),
@@ -175,19 +179,14 @@ export class PedidosService {
           create: (data.extras ?? []).map((e) => ({ nome: e.nome, valor: e.valor })),
         },
       },
-      include: {
-        cliente: { select: { nome: true } },
-        itens: { include: { produto: { select: { nome: true } } } },
-        extras: true,
-      },
     });
 
-    return this.findById(pedido.id);
+    return this.findById(userId, pedido.id);
   }
 
-  async update(id: string, data: UpdatePedidoInput) {
-    const existing = await prisma.pedido.findUnique({
-      where: { id },
+  async update(userId: string, id: string, data: UpdatePedidoInput) {
+    const existing = await prisma.pedido.findFirst({
+      where: { id, userId },
       include: { itens: true, extras: true },
     });
 
@@ -201,7 +200,13 @@ export class PedidosService {
 
     const updateData: Record<string, unknown> = {};
     if (data.numero) updateData.numero = data.numero;
-    if (data.clienteId) updateData.clienteId = data.clienteId;
+    if (data.clienteId) {
+      const cliente = await prisma.cliente.findFirst({
+        where: { id: data.clienteId, userId, ativo: true },
+      });
+      if (!cliente) throw new NotFoundError('Cliente');
+      updateData.clienteId = data.clienteId;
+    }
     if (data.dataPedido) updateData.dataPedido = new Date(data.dataPedido);
     if (data.prazoEntrega) updateData.prazoEntrega = new Date(data.prazoEntrega);
 
@@ -209,9 +214,13 @@ export class PedidosService {
       if (data.itens) {
         const produtoIds = data.itens.map((i) => i.produtoId);
         const produtos = await tx.produto.findMany({
-          where: { id: { in: produtoIds }, status: 'ATIVO' },
+          where: { id: { in: produtoIds }, userId, status: 'ATIVO' },
         });
         const produtoMap = new Map(produtos.map((p) => [p.id, p]));
+
+        if (produtos.length !== produtoIds.length) {
+          throw new AppError('Um ou mais produtos não encontrados ou indisponíveis', 400, 'INVALID_PRODUCTS');
+        }
 
         const itensComPreco = data.itens.map((item) => {
           const produto = produtoMap.get(item.produtoId)!;
@@ -251,11 +260,11 @@ export class PedidosService {
       await tx.pedido.update({ where: { id }, data: updateData });
     });
 
-    return this.findById(id);
+    return this.findById(userId, id);
   }
 
-  async updateStatus(id: string, status: string) {
-    const existing = await prisma.pedido.findUnique({ where: { id } });
+  async updateStatus(userId: string, id: string, status: string) {
+    const existing = await prisma.pedido.findFirst({ where: { id, userId } });
 
     if (!existing) {
       throw new NotFoundError('Pedido');
@@ -266,11 +275,11 @@ export class PedidosService {
       data: { status: status as 'PENDENTE' | 'APROVADO' | 'CONCLUIDO' | 'CANCELADO' },
     });
 
-    return this.findById(id);
+    return this.findById(userId, id);
   }
 
-  async enviar(id: string) {
-    const existing = await prisma.pedido.findUnique({ where: { id } });
+  async enviar(userId: string, id: string) {
+    const existing = await prisma.pedido.findFirst({ where: { id, userId } });
 
     if (!existing) {
       throw new NotFoundError('Pedido');
@@ -283,7 +292,11 @@ export class PedidosService {
       data: { enviadoCliente: true, linkToken },
     });
 
-    return this.findById(id);
+    return this.findById(userId, id);
+  }
+
+  async cancel(userId: string, id: string) {
+    return this.updateStatus(userId, id, 'CANCELADO');
   }
 
   async findByToken(token: string) {
@@ -345,10 +358,6 @@ export class PedidosService {
     });
 
     return this.findByToken(token);
-  }
-
-  async cancel(id: string) {
-    return this.updateStatus(id, 'CANCELADO');
   }
 }
 

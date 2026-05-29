@@ -15,12 +15,12 @@ function calcularStatus(quantidade: number, quantidadeMinima: number): string {
 }
 
 export class EstoqueService {
-  async findAll(filters: { search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: { search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId };
 
     if (filters.search) {
       where.nome = { contains: filters.search, mode: 'insensitive' };
@@ -50,8 +50,8 @@ export class EstoqueService {
     };
   }
 
-  async findById(id: string) {
-    const item = await prisma.materiaPrima.findUnique({ where: { id } });
+  async findById(userId: string, id: string) {
+    const item = await prisma.materiaPrima.findFirst({ where: { id, userId } });
 
     if (!item) {
       throw new NotFoundError('Matéria-prima');
@@ -68,8 +68,10 @@ export class EstoqueService {
     };
   }
 
-  async create(data: CreateMateriaPrimaInput) {
-    const item = await prisma.materiaPrima.create({ data });
+  async create(userId: string, data: CreateMateriaPrimaInput) {
+    const item = await prisma.materiaPrima.create({
+      data: { ...data, userId },
+    });
 
     return {
       id: item.id,
@@ -82,9 +84,9 @@ export class EstoqueService {
     };
   }
 
-  async entrada(data: EntradaEstoqueInput) {
-    const item = await prisma.materiaPrima.findUnique({
-      where: { id: data.materiaPrimaId },
+  async entrada(userId: string, data: EntradaEstoqueInput) {
+    const item = await prisma.materiaPrima.findFirst({
+      where: { id: data.materiaPrimaId, userId },
     });
 
     if (!item) {
@@ -100,6 +102,7 @@ export class EstoqueService {
       }),
       prisma.despesa.create({
         data: {
+          userId,
           descricao: `Entrada estoque: ${item.nome} (x${data.quantidade})`,
           valor: new Decimal(custoEntrada),
           materiaPrimaId: data.materiaPrimaId,
@@ -118,9 +121,9 @@ export class EstoqueService {
     };
   }
 
-  async saida(data: SaidaEstoqueInput) {
-    const item = await prisma.materiaPrima.findUnique({
-      where: { id: data.materiaPrimaId },
+  async saida(userId: string, data: SaidaEstoqueInput) {
+    const item = await prisma.materiaPrima.findFirst({
+      where: { id: data.materiaPrimaId, userId },
     });
 
     if (!item) {
@@ -147,12 +150,8 @@ export class EstoqueService {
     };
   }
 
-  async update(id: string, data: UpdateEstoqueInput) {
-    const existing = await prisma.materiaPrima.findUnique({ where: { id } });
-
-    if (!existing) {
-      throw new NotFoundError('Matéria-prima');
-    }
+  async update(userId: string, id: string, data: UpdateEstoqueInput) {
+    await this.findById(userId, id);
 
     const updated = await prisma.materiaPrima.update({
       where: { id },
@@ -170,15 +169,11 @@ export class EstoqueService {
     };
   }
 
-  async delete(id: string) {
-    const existing = await prisma.materiaPrima.findUnique({ where: { id } });
-
-    if (!existing) {
-      throw new NotFoundError('Matéria-prima');
-    }
+  async delete(userId: string, id: string) {
+    await this.findById(userId, id);
 
     const usoEmProduto = await prisma.materialProduto.count({
-      where: { materiaPrimaId: id },
+      where: { materiaPrimaId: id, produto: { userId } },
     });
 
     if (usoEmProduto > 0) {
@@ -191,7 +186,7 @@ export class EstoqueService {
 
     await prisma.$transaction([
       prisma.despesa.updateMany({
-        where: { materiaPrimaId: id },
+        where: { materiaPrimaId: id, userId },
         data: { materiaPrimaId: null },
       }),
       prisma.materiaPrima.delete({ where: { id } }),

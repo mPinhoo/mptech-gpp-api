@@ -3,12 +3,12 @@ import { NotFoundError } from '../utils/errors.js';
 import { CreateClienteInput, UpdateClienteInput } from '../schemas/cliente.schema.js';
 
 export class ClientesService {
-  async findAll(filters: { search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: { search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId, ativo: true };
 
     if (filters.search) {
       where.OR = [
@@ -17,8 +17,6 @@ export class ClientesService {
         { documento: { contains: filters.search, mode: 'insensitive' } },
       ];
     }
-
-    where.ativo = true;
 
     const [clientes, total] = await Promise.all([
       prisma.cliente.findMany({
@@ -43,9 +41,9 @@ export class ClientesService {
     };
   }
 
-  async findById(id: string) {
-    const cliente = await prisma.cliente.findUnique({
-      where: { id },
+  async findById(userId: string, id: string) {
+    const cliente = await prisma.cliente.findFirst({
+      where: { id, userId },
       include: {
         pedidos: {
           orderBy: { createdAt: 'desc' },
@@ -76,9 +74,10 @@ export class ClientesService {
     };
   }
 
-  async create(data: CreateClienteInput) {
+  async create(userId: string, data: CreateClienteInput) {
     const cliente = await prisma.cliente.create({
       data: {
+        userId,
         nome: data.nome,
         email: data.email || null,
         telefone: data.telefone || null,
@@ -97,8 +96,8 @@ export class ClientesService {
     };
   }
 
-  async update(id: string, data: UpdateClienteInput) {
-    const existing = await prisma.cliente.findUnique({ where: { id } });
+  async update(userId: string, id: string, data: UpdateClienteInput) {
+    const existing = await prisma.cliente.findFirst({ where: { id, userId } });
     if (!existing || !existing.ativo) {
       throw new NotFoundError('Cliente');
     }
@@ -124,8 +123,8 @@ export class ClientesService {
     };
   }
 
-  async delete(id: string) {
-    const existing = await prisma.cliente.findUnique({ where: { id } });
+  async delete(userId: string, id: string) {
+    const existing = await prisma.cliente.findFirst({ where: { id, userId } });
     if (!existing) {
       throw new NotFoundError('Cliente');
     }

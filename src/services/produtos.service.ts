@@ -3,12 +3,12 @@ import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreateProdutoInput, UpdateProdutoInput } from '../schemas/produto.schema.js';
 
 export class ProdutosService {
-  async findAll(filters: { status?: string; search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: { status?: string; search?: string; page?: number; limit?: number }) {
     const page = filters.page || 1;
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { userId };
 
     if (filters.status) {
       where.status = filters.status;
@@ -46,9 +46,9 @@ export class ProdutosService {
     };
   }
 
-  async findById(id: string) {
-    const produto = await prisma.produto.findUnique({
-      where: { id },
+  async findById(userId: string, id: string) {
+    const produto = await prisma.produto.findFirst({
+      where: { id, userId },
       include: {
         materiais: {
           include: { materiaPrima: { select: { id: true, nome: true, unidade: true, precoCusto: true } } },
@@ -81,14 +81,14 @@ export class ProdutosService {
     };
   }
 
-  async create(data: CreateProdutoInput) {
+  async create(userId: string, data: CreateProdutoInput) {
     const materiais = data.materiais ?? [];
 
     let materiaisData: { materiaPrimaId: string; quantidade: number; custoUnitario: number; subtotal: number }[] = [];
 
     if (materiais.length > 0) {
       const mpIds = materiais.map((m) => m.materiaPrimaId);
-      const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds } } });
+      const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds }, userId } });
 
       if (mps.length !== mpIds.length) {
         throw new AppError('Uma ou mais matérias-primas não encontradas', 400, 'INVALID_MATERIAIS');
@@ -109,6 +109,7 @@ export class ProdutosService {
 
     const produto = await prisma.produto.create({
       data: {
+        userId,
         nome: data.nome,
         categoria: data.categoria,
         descricao: data.descricao,
@@ -127,29 +128,11 @@ export class ProdutosService {
       },
     });
 
-    return {
-      id: produto.id,
-      nome: produto.nome,
-      categoria: produto.categoria,
-      descricao: produto.descricao,
-      tempoProducao: Number(produto.tempoProducao),
-      margemLucro: Number(produto.margemLucro),
-      preco: Number(produto.preco),
-      status: produto.status,
-      materiais: produto.materiais.map((m) => ({
-        id: m.id,
-        materiaPrimaId: m.materiaPrimaId,
-        nome: m.materiaPrima.nome,
-        unidade: m.materiaPrima.unidade,
-        quantidade: Number(m.quantidade),
-        custoUnitario: Number(m.custoUnitario),
-        subtotal: Number(m.subtotal),
-      })),
-    };
+    return this.findById(userId, produto.id);
   }
 
-  async update(id: string, data: UpdateProdutoInput) {
-    await this.findById(id);
+  async update(userId: string, id: string, data: UpdateProdutoInput) {
+    await this.findById(userId, id);
 
     const updateData: Record<string, unknown> = {};
     if (data.nome !== undefined) updateData.nome = data.nome;
@@ -163,7 +146,7 @@ export class ProdutosService {
     if (data.materiais !== undefined) {
       const materiais = data.materiais;
       const mpIds = materiais.map((m) => m.materiaPrimaId);
-      const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds } } });
+      const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds }, userId } });
 
       if (mps.length !== mpIds.length) {
         throw new AppError('Uma ou mais matérias-primas não encontradas', 400, 'INVALID_MATERIAIS');
@@ -187,39 +170,16 @@ export class ProdutosService {
       };
     }
 
-    const produto = await prisma.produto.update({
+    await prisma.produto.update({
       where: { id },
       data: updateData,
-      include: {
-        materiais: {
-          include: { materiaPrima: { select: { id: true, nome: true, unidade: true, precoCusto: true } } },
-        },
-      },
     });
 
-    return {
-      id: produto.id,
-      nome: produto.nome,
-      categoria: produto.categoria,
-      descricao: produto.descricao,
-      tempoProducao: Number(produto.tempoProducao),
-      margemLucro: Number(produto.margemLucro),
-      preco: Number(produto.preco),
-      status: produto.status,
-      materiais: produto.materiais.map((m) => ({
-        id: m.id,
-        materiaPrimaId: m.materiaPrimaId,
-        nome: m.materiaPrima.nome,
-        unidade: m.materiaPrima.unidade,
-        quantidade: Number(m.quantidade),
-        custoUnitario: Number(m.custoUnitario),
-        subtotal: Number(m.subtotal),
-      })),
-    };
+    return this.findById(userId, id);
   }
 
-  async delete(id: string) {
-    await this.findById(id);
+  async delete(userId: string, id: string) {
+    await this.findById(userId, id);
     await prisma.produto.update({
       where: { id },
       data: { status: 'INATIVO' },
