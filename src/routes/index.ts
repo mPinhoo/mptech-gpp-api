@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
+import { adminMiddleware } from '../middlewares/admin.middleware.js';
 import authRoutes from './auth.routes.js';
+import usersRoutes from './users.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import produtosRoutes from './produtos.routes.js';
 import estoqueRoutes from './estoque.routes.js';
@@ -16,6 +18,7 @@ const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/public', publicRoutes);
+router.use('/users', authMiddleware, adminMiddleware, usersRoutes);
 
 router.use('/dashboard', authMiddleware, dashboardRoutes);
 router.use('/produtos', authMiddleware, produtosRoutes);

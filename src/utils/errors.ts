@@ -37,3 +37,10 @@ export class ConflictError extends AppError {
     Object.setPrototypeOf(this, ConflictError.prototype);
   }
 }
+
+export class ForbiddenError extends AppError {
+  constructor(message = 'Acesso negado') {
+    super(message, 403, 'FORBIDDEN');
+    Object.setPrototypeOf(this, ForbiddenError.prototype);
+  }
+}
