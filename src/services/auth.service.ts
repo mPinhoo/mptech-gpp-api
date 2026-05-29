@@ -1,18 +1,10 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { signToken } from '../utils/jwt.js';
-import { UnauthorizedError, ConflictError, AppError } from '../utils/errors.js';
-import {
-  LoginInput,
-  RegisterInput,
-  UpdateProfileInput,
-  ForgotPasswordInput,
-  ResetPasswordInput,
-} from '../schemas/auth.schema.js';
+import { UnauthorizedError, ConflictError } from '../utils/errors.js';
+import { LoginInput, RegisterInput, UpdateProfileInput } from '../schemas/auth.schema.js';
 import { initializeNewUser } from './user-setup.service.js';
 import { validateAvatarUrl } from '../utils/avatar.js';
-import { sendPasswordResetEmail } from './email.service.js';
-import { generateResetToken, hashResetToken } from '../utils/reset-token.js';
 
 function formatUser(user: {
   id: string;
@@ -133,67 +125,6 @@ export class AuthService {
     });
 
     return formatUser(updated);
-  }
-
-  async forgotPassword(data: ForgotPasswordInput) {
-    const user = await prisma.user.findUnique({
-      where: { email: data.email },
-    });
-
-    if (!user) {
-      throw new AppError('Você ainda não é um usuário Zentra!', 404, 'USER_NOT_FOUND');
-    }
-
-    if (!user.ativo) {
-      throw new AppError('Conta desativada. Entre em contato com o suporte.', 403, 'FORBIDDEN');
-    }
-
-    const token = generateResetToken();
-    const resetTokenHash = hashResetToken(token);
-    const resetTokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { resetTokenHash, resetTokenExpiresAt },
-    });
-
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const resetUrl = `${frontendUrl}/redefinir-senha?token=${token}`;
-
-    await sendPasswordResetEmail(user.email, resetUrl, user.nome);
-
-    return {
-      message: 'Enviamos um link de redefinição de senha para o seu e-mail.',
-    };
-  }
-
-  async resetPassword(data: ResetPasswordInput) {
-    const resetTokenHash = hashResetToken(data.token);
-    const now = new Date();
-
-    const user = await prisma.user.findFirst({
-      where: {
-        resetTokenHash,
-        resetTokenExpiresAt: { gt: now },
-      },
-    });
-
-    if (!user) {
-      throw new AppError('Link inválido ou expirado. Solicite uma nova redefinição de senha.', 400, 'INVALID_TOKEN');
-    }
-
-    const hashedPassword = await bcrypt.hash(data.novaSenha, 10);
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        senha: hashedPassword,
-        resetTokenHash: null,
-        resetTokenExpiresAt: null,
-      },
-    });
-
-    return { message: 'Senha redefinida com sucesso!' };
   }
 }
 

@@ -11,13 +11,11 @@ import kanbanRoutes from './kanban.routes.js';
 import notificacoesRoutes from './notificacoes.routes.js';
 import agendaRoutes from './agenda.routes.js';
 import publicRoutes from './public.routes.js';
-import supportRoutes from './support.routes.js';
 
 const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/public', publicRoutes);
-router.use('/support', supportRoutes);
 
 router.use('/dashboard', authMiddleware, dashboardRoutes);
 router.use('/produtos', authMiddleware, produtosRoutes);
