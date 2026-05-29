@@ -49,6 +49,22 @@ describe('DashboardService', () => {
 
       expect(result.saldoMes).toBe(result.faturamento - result.despesas);
     });
+
+    it('deve somar faturamento de pedidos aprovados e concluídos', async () => {
+      mockPrisma.pedido.count.mockResolvedValue(3);
+      mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 1500 } });
+      mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 0 } });
+
+      await service.getStats(USER_ID);
+
+      expect(mockPrisma.pedido.aggregate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            status: { in: ['APROVADO', 'CONCLUIDO'] },
+          }),
+        })
+      );
+    });
   });
 
   describe('getChart', () => {

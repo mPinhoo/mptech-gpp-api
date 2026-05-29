@@ -11,7 +11,7 @@ const config: Config = {
   },
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
+      tsconfig: 'tsconfig.test.json',
       diagnostics: {
         ignoreCodes: [151002],
       },

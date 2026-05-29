@@ -2,6 +2,9 @@ import prisma from '../utils/prisma.js';
 
 const MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+/** Pedidos que saíram de pendente (aprovados ou concluídos) entram no faturamento. */
+const FATURAMENTO_STATUSES = ['APROVADO', 'CONCLUIDO'] as const;
+
 export class DashboardService {
   async getStats(userId: string) {
     const now = new Date();
@@ -26,7 +29,7 @@ export class DashboardService {
       prisma.pedido.aggregate({
         where: {
           userId,
-          status: 'CONCLUIDO',
+          status: { in: [...FATURAMENTO_STATUSES] },
           createdAt: { gte: startOfMonth },
         },
         _sum: { valorTotal: true },
@@ -34,7 +37,7 @@ export class DashboardService {
       prisma.pedido.aggregate({
         where: {
           userId,
-          status: 'CONCLUIDO',
+          status: { in: [...FATURAMENTO_STATUSES] },
           createdAt: { gte: startOfLastMonth, lte: endOfLastMonth },
         },
         _sum: { valorTotal: true },
@@ -95,7 +98,7 @@ export class DashboardService {
         prisma.pedido.aggregate({
           where: {
             userId,
-            status: 'CONCLUIDO',
+            status: { in: [...FATURAMENTO_STATUSES] },
             createdAt: { gte: date, lte: endDate },
           },
           _sum: { valorTotal: true },
