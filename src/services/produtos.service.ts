@@ -37,7 +37,7 @@ export class ProdutosService {
         nome: p.nome,
         categoria: p.categoria,
         descricao: p.descricao,
-        qtdPorHora: Number(p.qtdPorHora),
+        tempoProducao: Number(p.tempoProducao),
         preco: Number(p.preco),
         status: p.status,
       })),
@@ -64,7 +64,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       descricao: produto.descricao,
-      qtdPorHora: Number(produto.qtdPorHora),
+      tempoProducao: Number(produto.tempoProducao),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({
@@ -110,7 +110,7 @@ export class ProdutosService {
         nome: data.nome,
         categoria: data.categoria,
         descricao: data.descricao,
-        qtdPorHora: data.qtdPorHora,
+        tempoProducao: data.tempoProducao,
         preco: data.preco,
         status: data.status,
         materiais: {
@@ -129,7 +129,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       descricao: produto.descricao,
-      qtdPorHora: Number(produto.qtdPorHora),
+      tempoProducao: Number(produto.tempoProducao),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({
@@ -151,7 +151,7 @@ export class ProdutosService {
     if (data.nome !== undefined) updateData.nome = data.nome;
     if (data.categoria !== undefined) updateData.categoria = data.categoria;
     if (data.descricao !== undefined) updateData.descricao = data.descricao;
-    if (data.qtdPorHora !== undefined) updateData.qtdPorHora = data.qtdPorHora;
+    if (data.tempoProducao !== undefined) updateData.tempoProducao = data.tempoProducao;
     if (data.preco !== undefined) updateData.preco = data.preco;
     if (data.status !== undefined) updateData.status = data.status;
 
@@ -197,7 +197,7 @@ export class ProdutosService {
       nome: produto.nome,
       categoria: produto.categoria,
       descricao: produto.descricao,
-      qtdPorHora: Number(produto.qtdPorHora),
+      tempoProducao: Number(produto.tempoProducao),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({

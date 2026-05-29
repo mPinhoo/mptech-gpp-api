@@ -41,7 +41,7 @@ model Produto {
   nome        String
   categoria   String
   descricao   String?
-  qtdPorHora  Decimal       @db.Decimal(10, 2) @default(1)
+  tempoProducao Decimal     @db.Decimal(10, 2) @default(1)
   preco       Decimal       @db.Decimal(10, 2)
   status      StatusProduto @default(ATIVO)
   createdAt   DateTime      @default(now())
