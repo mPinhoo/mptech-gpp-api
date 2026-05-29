@@ -9,9 +9,12 @@ import {
 } from '../schemas/estoque.schema.js';
 import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
 
+/** Faixa acima do mínimo considerada "Baixo" (ex.: mín. 100 → Baixo até 131, Normal a partir de 132). */
+const MARGEM_ESTOQUE_BAIXO = 31;
+
 function calcularStatus(quantidade: number, quantidadeMinima: number): string {
-  if (quantidade <= 0) return 'Crítico';
-  if (quantidade <= quantidadeMinima) return 'Baixo';
+  if (quantidade < quantidadeMinima) return 'Crítico';
+  if (quantidade <= quantidadeMinima + MARGEM_ESTOQUE_BAIXO) return 'Baixo';
   return 'Normal';
 }
 
@@ -26,22 +29,22 @@ async function findMateriaPrimaIdsByEstoqueStatus(
         SELECT id
         FROM "MateriaPrima"
         WHERE "userId" = ${userId}
-          AND quantidade <= 0
+          AND quantidade < "quantidadeMinima"
       `.then((rows) => rows.map((row) => row.id));
     case 'Baixo':
       return prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM "MateriaPrima"
         WHERE "userId" = ${userId}
-          AND quantidade > 0
-          AND quantidade <= "quantidadeMinima"
+          AND quantidade >= "quantidadeMinima"
+          AND quantidade <= "quantidadeMinima" + ${MARGEM_ESTOQUE_BAIXO}
       `.then((rows) => rows.map((row) => row.id));
     case 'Normal':
       return prisma.$queryRaw<Array<{ id: string }>>`
         SELECT id
         FROM "MateriaPrima"
         WHERE "userId" = ${userId}
-          AND quantidade > "quantidadeMinima"
+          AND quantidade > "quantidadeMinima" + ${MARGEM_ESTOQUE_BAIXO}
       `.then((rows) => rows.map((row) => row.id));
     default:
       return [];

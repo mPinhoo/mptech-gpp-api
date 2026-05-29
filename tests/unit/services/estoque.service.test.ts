@@ -34,9 +34,9 @@ describe('EstoqueService', () => {
   describe('findAll', () => {
     it('deve retornar itens de estoque com status calculado', async () => {
       const itens = [
-        { id: '1', nome: 'Prod A', quantidade: 50, quantidadeMinima: 10, unidade: 'un', precoCusto: { toNumber: () => 10 } },
-        { id: '2', nome: 'Prod B', quantidade: 5, quantidadeMinima: 10, unidade: 'un', precoCusto: { toNumber: () => 10 } },
-        { id: '3', nome: 'Prod C', quantidade: 0, quantidadeMinima: 5, unidade: 'un', precoCusto: { toNumber: () => 10 } },
+        { id: '1', nome: 'Prod A', quantidade: 132, quantidadeMinima: 100, unidade: 'un', precoCusto: { toNumber: () => 10 } },
+        { id: '2', nome: 'Prod B', quantidade: 130, quantidadeMinima: 100, unidade: 'un', precoCusto: { toNumber: () => 10 } },
+        { id: '3', nome: 'Prod C', quantidade: 99, quantidadeMinima: 100, unidade: 'un', precoCusto: { toNumber: () => 10 } },
       ];
       mockPrisma.materiaPrima.findMany.mockResolvedValue(itens);
       mockPrisma.materiaPrima.count.mockResolvedValue(3);
