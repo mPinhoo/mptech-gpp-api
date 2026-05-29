@@ -42,7 +42,8 @@ model Produto {
   categoria   String
   descricao   String?
   tempoProducao Decimal     @db.Decimal(10, 2) @default(1)
-  preco       Decimal       @db.Decimal(10, 2)
+  margemLucro   Decimal     @db.Decimal(5, 2)  @default(0)
+  preco         Decimal     @db.Decimal(10, 2)
   status      StatusProduto @default(ATIVO)
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -148,7 +149,6 @@ model ConfigPrecificacao {
   taxaCartao      Decimal  @db.Decimal(5, 2)  @default(0)
   impostos        Decimal  @db.Decimal(5, 2)  @default(0)
   taxasAdicionais Decimal  @db.Decimal(5, 2)  @default(0)
-  margemLucro     Decimal  @db.Decimal(5, 2)  @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   custosFixos     CustoFixoConfig[]

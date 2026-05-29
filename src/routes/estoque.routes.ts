@@ -16,5 +16,6 @@ router.post('/', validate({ body: createMateriaPrimaSchema }), estoqueController
 router.post('/entrada', validate({ body: entradaEstoqueSchema }), estoqueController.entrada);
 router.post('/saida', validate({ body: saidaEstoqueSchema }), estoqueController.saida);
 router.put('/:id', validate({ body: updateEstoqueSchema }), estoqueController.update);
+router.delete('/:id', estoqueController.delete);
 
 export default router;

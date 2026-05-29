@@ -38,6 +38,7 @@ export class ProdutosService {
         categoria: p.categoria,
         descricao: p.descricao,
         tempoProducao: Number(p.tempoProducao),
+        margemLucro: Number(p.margemLucro),
         preco: Number(p.preco),
         status: p.status,
       })),
@@ -65,6 +66,7 @@ export class ProdutosService {
       categoria: produto.categoria,
       descricao: produto.descricao,
       tempoProducao: Number(produto.tempoProducao),
+      margemLucro: Number(produto.margemLucro),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({
@@ -111,6 +113,7 @@ export class ProdutosService {
         categoria: data.categoria,
         descricao: data.descricao,
         tempoProducao: data.tempoProducao,
+        margemLucro: data.margemLucro,
         preco: data.preco,
         status: data.status,
         materiais: {
@@ -130,6 +133,7 @@ export class ProdutosService {
       categoria: produto.categoria,
       descricao: produto.descricao,
       tempoProducao: Number(produto.tempoProducao),
+      margemLucro: Number(produto.margemLucro),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({
@@ -152,6 +156,7 @@ export class ProdutosService {
     if (data.categoria !== undefined) updateData.categoria = data.categoria;
     if (data.descricao !== undefined) updateData.descricao = data.descricao;
     if (data.tempoProducao !== undefined) updateData.tempoProducao = data.tempoProducao;
+    if (data.margemLucro !== undefined) updateData.margemLucro = data.margemLucro;
     if (data.preco !== undefined) updateData.preco = data.preco;
     if (data.status !== undefined) updateData.status = data.status;
 
@@ -198,6 +203,7 @@ export class ProdutosService {
       categoria: produto.categoria,
       descricao: produto.descricao,
       tempoProducao: Number(produto.tempoProducao),
+      margemLucro: Number(produto.margemLucro),
       preco: Number(produto.preco),
       status: produto.status,
       materiais: produto.materiais.map((m) => ({

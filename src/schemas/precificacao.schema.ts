@@ -15,7 +15,6 @@ export const updateConfigPrecificacaoSchema = z.object({
   taxaCartao: z.number().min(0).max(100).default(0),
   impostos: z.number().min(0).max(100).default(0),
   taxasAdicionais: z.number().min(0).max(100).default(0),
-  margemLucro: z.number().min(0).max(100).default(0),
   custosFixos: z.array(custoFixoSchema).default([]),
 });
 

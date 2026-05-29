@@ -62,6 +62,16 @@ export class EstoqueController {
       next(err);
     }
   }
+
+  async delete(req: Request, res: Response, next: NextFunction) {
+    try {
+      const id = req.params.id as string;
+      await estoqueService.delete(id);
+      res.json({ success: true });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const estoqueController = new EstoqueController();

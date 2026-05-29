@@ -169,6 +169,34 @@ export class EstoqueService {
       status: calcularStatus(updated.quantidade, updated.quantidadeMinima),
     };
   }
+
+  async delete(id: string) {
+    const existing = await prisma.materiaPrima.findUnique({ where: { id } });
+
+    if (!existing) {
+      throw new NotFoundError('Matéria-prima');
+    }
+
+    const usoEmProduto = await prisma.materialProduto.count({
+      where: { materiaPrimaId: id },
+    });
+
+    if (usoEmProduto > 0) {
+      throw new AppError(
+        'Matéria-prima em uso em produtos e não pode ser excluída',
+        400,
+        'MATERIA_EM_USO'
+      );
+    }
+
+    await prisma.$transaction([
+      prisma.despesa.updateMany({
+        where: { materiaPrimaId: id },
+        data: { materiaPrimaId: null },
+      }),
+      prisma.materiaPrima.delete({ where: { id } }),
+    ]);
+  }
 }
 
 export const estoqueService = new EstoqueService();

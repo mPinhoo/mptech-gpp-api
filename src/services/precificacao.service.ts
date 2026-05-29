@@ -39,7 +39,6 @@ export class PrecificacaoService {
           taxaCartao: data.taxaCartao,
           impostos: data.impostos,
           taxasAdicionais: data.taxasAdicionais,
-          margemLucro: data.margemLucro,
           custosFixos: {
             create: data.custosFixos.map((c) => ({
               nome: c.nome,
@@ -68,7 +67,6 @@ function formatConfig(config: Record<string, unknown>) {
     taxaCartao: Number(config.taxaCartao),
     impostos: Number(config.impostos),
     taxasAdicionais: Number(config.taxasAdicionais),
-    margemLucro: Number(config.margemLucro),
     custosFixos: custosFixos.map((c) => ({
       id: c.id,
       nome: c.nome,
