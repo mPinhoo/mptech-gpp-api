@@ -39,6 +39,29 @@ describe('ClientesService', () => {
       expect(result.data).toHaveLength(1);
       expect(result.data[0].nome).toBe('João');
     });
+
+    it('deve aplicar filtros de nome, email e documento', async () => {
+      mockPrisma.cliente.findMany.mockResolvedValue([]);
+      mockPrisma.cliente.count.mockResolvedValue(0);
+
+      await service.findAll(USER_ID, {
+        nome: 'João',
+        email: 'joao@',
+        documento: '123',
+      });
+
+      expect(mockPrisma.cliente.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: USER_ID,
+            ativo: true,
+            nome: { contains: 'João', mode: 'insensitive' },
+            email: { contains: 'joao@', mode: 'insensitive' },
+            documento: { contains: '123', mode: 'insensitive' },
+          }),
+        })
+      );
+    });
   });
 
   describe('findById', () => {

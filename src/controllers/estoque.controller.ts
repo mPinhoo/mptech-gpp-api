@@ -5,9 +5,11 @@ import { getUserId } from '../utils/tenant.js';
 export class EstoqueController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { search, page, limit, sortBy, sortOrder } = req.query;
+      const { search, material, status, page, limit, sortBy, sortOrder } = req.query;
       const result = await estoqueService.findAll(getUserId(req), {
         search: search as string | undefined,
+        material: material as string | undefined,
+        status: status as string | undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         sortBy: sortBy as string | undefined,

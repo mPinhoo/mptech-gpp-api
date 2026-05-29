@@ -16,7 +16,10 @@ function produtoOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
 }
 
 export class ProdutosService {
-  async findAll(userId: string, filters: ListFilters & { status?: string }) {
+  async findAll(
+    userId: string,
+    filters: ListFilters & { status?: string; nome?: string; categoria?: string }
+  ) {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
@@ -25,6 +28,14 @@ export class ProdutosService {
 
     if (filters.status) {
       where.status = filters.status;
+    }
+
+    if (filters.nome) {
+      where.nome = { contains: filters.nome, mode: 'insensitive' };
+    }
+
+    if (filters.categoria) {
+      where.categoria = filters.categoria;
     }
 
     if (filters.search) {

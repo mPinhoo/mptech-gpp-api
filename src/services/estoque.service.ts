@@ -15,6 +15,39 @@ function calcularStatus(quantidade: number, quantidadeMinima: number): string {
   return 'Normal';
 }
 
+async function findMateriaPrimaIdsByEstoqueStatus(
+  userId: string,
+  status: string
+): Promise<string[]> {
+  switch (status) {
+    case 'Critico':
+    case 'Crítico':
+      return prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM "MateriaPrima"
+        WHERE "userId" = ${userId}
+          AND quantidade <= 0
+      `.then((rows) => rows.map((row) => row.id));
+    case 'Baixo':
+      return prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM "MateriaPrima"
+        WHERE "userId" = ${userId}
+          AND quantidade > 0
+          AND quantidade <= "quantidadeMinima"
+      `.then((rows) => rows.map((row) => row.id));
+    case 'Normal':
+      return prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id
+        FROM "MateriaPrima"
+        WHERE "userId" = ${userId}
+          AND quantidade > "quantidadeMinima"
+      `.then((rows) => rows.map((row) => row.id));
+    default:
+      return [];
+  }
+}
+
 function estoqueOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
   const order = parseSortOrder(sortOrder);
   return buildOrderBy(
@@ -33,12 +66,27 @@ function estoqueOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
 }
 
 export class EstoqueService {
-  async findAll(userId: string, filters: ListFilters) {
+  async findAll(
+    userId: string,
+    filters: ListFilters & { material?: string; status?: string }
+  ) {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId };
+
+    if (filters.material) {
+      where.nome = { contains: filters.material, mode: 'insensitive' };
+    }
+
+    if (filters.status) {
+      const ids = await findMateriaPrimaIdsByEstoqueStatus(userId, filters.status);
+      if (ids.length === 0) {
+        return { data: [], meta: { page, limit, total: 0 } };
+      }
+      where.id = { in: ids };
+    }
 
     if (filters.search) {
       where.nome = { contains: filters.search, mode: 'insensitive' };

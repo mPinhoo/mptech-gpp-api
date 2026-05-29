@@ -54,6 +54,28 @@ describe('ProdutosService', () => {
         })
       );
     });
+
+    it('deve aplicar filtros de nome, categoria e status', async () => {
+      mockPrisma.produto.findMany.mockResolvedValue([]);
+      mockPrisma.produto.count.mockResolvedValue(0);
+
+      await service.findAll(USER_ID, {
+        nome: 'Caixa',
+        categoria: 'Festa',
+        status: 'ATIVO',
+      });
+
+      expect(mockPrisma.produto.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: USER_ID,
+            nome: { contains: 'Caixa', mode: 'insensitive' },
+            categoria: 'Festa',
+            status: 'ATIVO',
+          }),
+        })
+      );
+    });
   });
 
   describe('findById', () => {

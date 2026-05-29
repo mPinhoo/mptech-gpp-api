@@ -21,12 +21,27 @@ function clienteOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
 }
 
 export class ClientesService {
-  async findAll(userId: string, filters: ListFilters) {
+  async findAll(
+    userId: string,
+    filters: ListFilters & { nome?: string; email?: string; documento?: string }
+  ) {
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId, ativo: true };
+
+    if (filters.nome) {
+      where.nome = { contains: filters.nome, mode: 'insensitive' };
+    }
+
+    if (filters.email) {
+      where.email = { contains: filters.email, mode: 'insensitive' };
+    }
+
+    if (filters.documento) {
+      where.documento = { contains: filters.documento, mode: 'insensitive' };
+    }
 
     if (filters.search) {
       where.OR = [

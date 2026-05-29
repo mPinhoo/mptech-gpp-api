@@ -12,6 +12,7 @@ const mockPrisma = {
     create: jest.fn(),
   },
   $transaction: jest.fn(),
+  $queryRaw: jest.fn(),
 };
 
 jest.mock('@/utils/prisma', () => ({
@@ -45,6 +46,50 @@ describe('EstoqueService', () => {
       expect(result.data[0].status).toBe('Normal');
       expect(result.data[1].status).toBe('Baixo');
       expect(result.data[2].status).toBe('Crítico');
+    });
+
+    it('deve aplicar filtro de material', async () => {
+      mockPrisma.materiaPrima.findMany.mockResolvedValue([]);
+      mockPrisma.materiaPrima.count.mockResolvedValue(0);
+
+      await service.findAll(USER_ID, { material: 'Papel' });
+
+      expect(mockPrisma.materiaPrima.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: USER_ID,
+            nome: { contains: 'Papel', mode: 'insensitive' },
+          }),
+        })
+      );
+    });
+
+    it('deve aplicar filtro de status', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([{ id: '1' }]);
+      mockPrisma.materiaPrima.findMany.mockResolvedValue([]);
+      mockPrisma.materiaPrima.count.mockResolvedValue(0);
+
+      await service.findAll(USER_ID, { status: 'Baixo' });
+
+      expect(mockPrisma.$queryRaw).toHaveBeenCalled();
+      expect(mockPrisma.materiaPrima.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: USER_ID,
+            id: { in: ['1'] },
+          }),
+        })
+      );
+    });
+
+    it('deve retornar vazio quando status não encontrar materiais', async () => {
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+
+      const result = await service.findAll(USER_ID, { status: 'Normal' });
+
+      expect(result.data).toEqual([]);
+      expect(result.meta.total).toBe(0);
+      expect(mockPrisma.materiaPrima.findMany).not.toHaveBeenCalled();
     });
   });
 

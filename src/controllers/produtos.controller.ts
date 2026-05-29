@@ -5,10 +5,12 @@ import { getUserId } from '../utils/tenant.js';
 export class ProdutosController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { status, search, page, limit, sortBy, sortOrder } = req.query;
+      const { status, search, nome, categoria, page, limit, sortBy, sortOrder } = req.query;
       const result = await produtosService.findAll(getUserId(req), {
         status: status as string | undefined,
         search: search as string | undefined,
+        nome: nome as string | undefined,
+        categoria: categoria as string | undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
         sortBy: sortBy as string | undefined,
