@@ -66,6 +66,33 @@ describe('AgendaService', () => {
         })
       ).rejects.toThrow('Limite de 5 lembretes por dia atingido');
     });
+
+    it('deve permitir lembrete com prazo curto no fuso de São Paulo', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-06-02T15:27:00-03:00'));
+
+      mockPrisma.lembrete.count.mockResolvedValue(0);
+      mockPrisma.lembrete.create.mockResolvedValue({
+        id: '2',
+        titulo: 'Teste rápido',
+        descricao: null,
+        dataReferencia: '2026-06-02',
+        agendadoPara: new Date('2026-06-02T15:30:00-03:00'),
+        notificado: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await expect(
+        service.create(USER_ID, {
+          titulo: 'Teste rápido',
+          data: '2026-06-02',
+          horario: '15:30',
+        })
+      ).resolves.toMatchObject({ titulo: 'Teste rápido' });
+
+      jest.useRealTimers();
+    });
   });
 
   describe('delete', () => {

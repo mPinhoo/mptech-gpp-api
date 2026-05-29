@@ -1,18 +1,12 @@
 import prisma from '../utils/prisma.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import { CreateLembreteInput, UpdateLembreteInput } from '../schemas/agenda.schema.js';
+import {
+  combineDateTimeBR,
+  extractTimeBR,
+} from '../utils/datetime-br.js';
 
 const MAX_LEMBRETES_POR_DIA = 5;
-
-function combineDateTime(data: string, horario: string): Date {
-  return new Date(`${data}T${horario}:00`);
-}
-
-function extractTime(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
-}
 
 function formatLembrete(item: {
   id: string;
@@ -24,7 +18,7 @@ function formatLembrete(item: {
   createdAt: Date;
   updatedAt: Date;
 }) {
-  const horario = extractTime(item.agendadoPara);
+  const horario = extractTimeBR(item.agendadoPara);
 
   return {
     id: item.id,
@@ -41,8 +35,8 @@ function formatLembrete(item: {
 
 export class AgendaService {
   async findByRange(userId: string, de: string, ate: string) {
-    const start = combineDateTime(de, '00:00');
-    const end = combineDateTime(ate, '23:59');
+    const start = combineDateTimeBR(de, '00:00');
+    const end = combineDateTimeBR(ate, '23:59');
 
     const lembretes = await prisma.lembrete.findMany({
       where: {
@@ -65,7 +59,7 @@ export class AgendaService {
   }
 
   async create(userId: string, input: CreateLembreteInput) {
-    const agendadoPara = combineDateTime(input.data, input.horario);
+    const agendadoPara = combineDateTimeBR(input.data, input.horario);
 
     if (agendadoPara.getTime() <= Date.now()) {
       throw new AppError('O lembrete deve ser agendado para uma data e horário futuros', 400);
@@ -106,9 +100,9 @@ export class AgendaService {
     }
 
     const data = input.data ?? existing.dataReferencia;
-    const horario = input.horario ?? extractTime(existing.agendadoPara);
+    const horario = input.horario ?? extractTimeBR(existing.agendadoPara);
 
-    const agendadoPara = combineDateTime(data, horario);
+    const agendadoPara = combineDateTimeBR(data, horario);
 
     if (agendadoPara.getTime() <= Date.now()) {
       throw new AppError('O lembrete deve ser agendado para uma data e horário futuros', 400);
@@ -170,6 +164,7 @@ export async function processarLembretesPendentes() {
     const horario = lembrete.agendadoPara.toLocaleTimeString('pt-BR', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'America/Sao_Paulo',
     });
 
     await prisma.$transaction([
