@@ -2,8 +2,27 @@ import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { signToken } from '../utils/jwt.js';
 import { UnauthorizedError, ConflictError } from '../utils/errors.js';
-import { LoginInput, RegisterInput } from '../schemas/auth.schema.js';
+import { LoginInput, RegisterInput, UpdateProfileInput } from '../schemas/auth.schema.js';
 import { initializeNewUser } from './user-setup.service.js';
+import { validateAvatarUrl } from '../utils/avatar.js';
+
+function formatUser(user: {
+  id: string;
+  nome: string;
+  email: string;
+  avatarUrl?: string | null;
+  ativo?: boolean;
+  createdAt?: Date;
+}) {
+  return {
+    id: user.id,
+    nome: user.nome,
+    email: user.email,
+    avatarUrl: user.avatarUrl ?? null,
+    ...(user.ativo !== undefined ? { ativo: user.ativo } : {}),
+    ...(user.createdAt ? { createdAt: user.createdAt } : {}),
+  };
+}
 
 export class AuthService {
   async login(data: LoginInput) {
@@ -24,11 +43,7 @@ export class AuthService {
 
     return {
       token,
-      user: {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-      },
+      user: formatUser(user),
     };
   }
 
@@ -57,25 +72,59 @@ export class AuthService {
 
     return {
       token,
-      user: {
-        id: user.id,
-        nome: user.nome,
-        email: user.email,
-      },
+      user: formatUser(user),
     };
   }
 
   async me(userId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, nome: true, email: true, ativo: true, createdAt: true },
+      select: { id: true, nome: true, email: true, avatarUrl: true, ativo: true, createdAt: true },
     });
 
     if (!user) {
       throw new UnauthorizedError('Usuário não encontrado');
     }
 
-    return user;
+    return formatUser(user);
+  }
+
+  async updateProfile(userId: string, data: UpdateProfileInput) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedError('Usuário não encontrado');
+    }
+
+    validateAvatarUrl(data.avatarUrl);
+
+    const updateData: { nome?: string; avatarUrl?: string | null; senha?: string } = {};
+
+    if (data.nome !== undefined) {
+      updateData.nome = data.nome;
+    }
+
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl || null;
+    }
+
+    if (data.novaSenha) {
+      const validPassword = await bcrypt.compare(data.senhaAtual!, user.senha);
+      if (!validPassword) {
+        throw new UnauthorizedError('Senha atual incorreta');
+      }
+      updateData.senha = await bcrypt.hash(data.novaSenha, 10);
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: { id: true, nome: true, email: true, avatarUrl: true, ativo: true, createdAt: true },
+    });
+
+    return formatUser(updated);
   }
 }
 
