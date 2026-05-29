@@ -77,6 +77,7 @@ export class PedidosService {
         itens: {
           include: { produto: { select: { nome: true } } },
         },
+        extras: true,
       },
     });
 
@@ -103,6 +104,11 @@ export class PedidosService {
         quantidade: item.quantidade,
         precoUnitario: Number(item.precoUnitario),
         subtotal: Number(item.subtotal),
+      })),
+      extras: pedido.extras.map((e) => ({
+        id: e.id,
+        nome: e.nome,
+        valor: Number(e.valor),
       })),
     };
   }
@@ -141,7 +147,7 @@ export class PedidosService {
 
     const itensComPreco = data.itens.map((item) => {
       const produto = produtoMap.get(item.produtoId)!;
-      const precoUnitario = Number(produto.preco);
+      const precoUnitario = item.precoUnitario ?? Number(produto.preco);
       const subtotal = precoUnitario * item.quantidade;
       return {
         produtoId: item.produtoId,
@@ -151,7 +157,8 @@ export class PedidosService {
       };
     });
 
-    const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0);
+    const totalExtras = (data.extras ?? []).reduce((sum, e) => sum + e.valor, 0);
+    const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0) + totalExtras;
     const numero = await this.generateNumero();
 
     const pedido = await prisma.pedido.create({
@@ -162,35 +169,24 @@ export class PedidosService {
         prazoEntrega: new Date(data.prazoEntrega),
         valorTotal: new Decimal(valorTotal),
         itens: { create: itensComPreco },
+        extras: {
+          create: (data.extras ?? []).map((e) => ({ nome: e.nome, valor: e.valor })),
+        },
       },
       include: {
         cliente: { select: { nome: true } },
         itens: { include: { produto: { select: { nome: true } } } },
+        extras: true,
       },
     });
 
-    return {
-      id: pedido.id,
-      numero: pedido.numero,
-      cliente: pedido.cliente.nome,
-      dataPedido: pedido.dataPedido,
-      prazoEntrega: pedido.prazoEntrega,
-      status: pedido.status,
-      valorTotal: Number(pedido.valorTotal),
-      itens: pedido.itens.map((item) => ({
-        id: item.id,
-        produto: item.produto.nome,
-        quantidade: item.quantidade,
-        precoUnitario: Number(item.precoUnitario),
-        subtotal: Number(item.subtotal),
-      })),
-    };
+    return this.findById(pedido.id);
   }
 
   async update(id: string, data: UpdatePedidoInput) {
     const existing = await prisma.pedido.findUnique({
       where: { id },
-      include: { itens: true },
+      include: { itens: true, extras: true },
     });
 
     if (!existing) {
@@ -207,42 +203,51 @@ export class PedidosService {
     if (data.dataPedido) updateData.dataPedido = new Date(data.dataPedido);
     if (data.prazoEntrega) updateData.prazoEntrega = new Date(data.prazoEntrega);
 
-    if (data.itens) {
-      const produtoIds = data.itens.map((i) => i.produtoId);
-      const produtos = await prisma.produto.findMany({
-        where: { id: { in: produtoIds }, status: 'ATIVO' },
-      });
-      const produtoMap = new Map(produtos.map((p) => [p.id, p]));
-
-      const itensComPreco = data.itens.map((item) => {
-        const produto = produtoMap.get(item.produtoId)!;
-        const precoUnitario = Number(produto.preco);
-        const subtotal = precoUnitario * item.quantidade;
-        return {
-          produtoId: item.produtoId,
-          quantidade: item.quantidade,
-          precoUnitario: new Decimal(precoUnitario),
-          subtotal: new Decimal(subtotal),
-        };
-      });
-
-      const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0);
-
-      await prisma.$transaction(async (tx) => {
-        await tx.itemPedido.deleteMany({ where: { pedidoId: id } });
-
-        await tx.pedido.update({
-          where: { id },
-          data: {
-            ...updateData,
-            valorTotal: new Decimal(valorTotal),
-            itens: { create: itensComPreco },
-          },
+    await prisma.$transaction(async (tx) => {
+      if (data.itens) {
+        const produtoIds = data.itens.map((i) => i.produtoId);
+        const produtos = await tx.produto.findMany({
+          where: { id: { in: produtoIds }, status: 'ATIVO' },
         });
-      });
-    } else {
-      await prisma.pedido.update({ where: { id }, data: updateData });
-    }
+        const produtoMap = new Map(produtos.map((p) => [p.id, p]));
+
+        const itensComPreco = data.itens.map((item) => {
+          const produto = produtoMap.get(item.produtoId)!;
+          const precoUnitario = item.precoUnitario ?? Number(produto.preco);
+          const subtotal = precoUnitario * item.quantidade;
+          return {
+            produtoId: item.produtoId,
+            quantidade: item.quantidade,
+            precoUnitario: new Decimal(precoUnitario),
+            subtotal: new Decimal(subtotal),
+          };
+        });
+
+        const totalExtras = data.extras
+          ? data.extras.reduce((sum, e) => sum + e.valor, 0)
+          : existing.extras.reduce((sum, e) => sum + Number(e.valor), 0);
+        const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0) + totalExtras;
+
+        await tx.itemPedido.deleteMany({ where: { pedidoId: id } });
+        updateData.valorTotal = new Decimal(valorTotal);
+        updateData.itens = { create: itensComPreco };
+      }
+
+      if (data.extras !== undefined) {
+        await tx.extraPedido.deleteMany({ where: { pedidoId: id } });
+        updateData.extras = {
+          create: data.extras.map((e) => ({ nome: e.nome, valor: e.valor })),
+        };
+
+        if (!data.itens) {
+          const totalItens = existing.itens.reduce((sum, item) => sum + Number(item.subtotal), 0);
+          const totalExtras = data.extras.reduce((sum, e) => sum + e.valor, 0);
+          updateData.valorTotal = new Decimal(totalItens + totalExtras);
+        }
+      }
+
+      await tx.pedido.update({ where: { id }, data: updateData });
+    });
 
     return this.findById(id);
   }

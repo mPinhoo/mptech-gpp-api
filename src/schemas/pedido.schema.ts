@@ -3,6 +3,12 @@ import { z } from 'zod';
 const itemPedidoSchema = z.object({
   produtoId: z.string().uuid('ID do produto inválido'),
   quantidade: z.number().int().positive('Quantidade deve ser positiva'),
+  precoUnitario: z.number().positive('Preço deve ser positivo').optional(),
+});
+
+const extraPedidoSchema = z.object({
+  nome: z.string().min(1, 'Nome do extra é obrigatório'),
+  valor: z.number().min(0, 'Valor deve ser >= 0'),
 });
 
 export const createPedidoSchema = z.object({
@@ -10,6 +16,7 @@ export const createPedidoSchema = z.object({
   dataPedido: z.string().refine((val) => !isNaN(Date.parse(val)), 'Data inválida'),
   prazoEntrega: z.string().refine((val) => !isNaN(Date.parse(val)), 'Prazo inválido'),
   itens: z.array(itemPedidoSchema).min(1, 'Pedido deve ter pelo menos 1 item'),
+  extras: z.array(extraPedidoSchema).default([]),
 });
 
 export const updatePedidoSchema = z.object({
@@ -18,6 +25,7 @@ export const updatePedidoSchema = z.object({
   dataPedido: z.string().refine((val) => !isNaN(Date.parse(val))).optional(),
   prazoEntrega: z.string().refine((val) => !isNaN(Date.parse(val))).optional(),
   itens: z.array(itemPedidoSchema).min(1).optional(),
+  extras: z.array(extraPedidoSchema).optional(),
 });
 
 export const updateStatusSchema = z.object({
