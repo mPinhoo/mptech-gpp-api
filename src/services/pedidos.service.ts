@@ -338,6 +338,7 @@ export class PedidosService {
   async aceitarByToken(token: string) {
     const pedido = await prisma.pedido.findUnique({
       where: { linkToken: token },
+      include: { cliente: { select: { nome: true } } },
     });
 
     if (!pedido) {
@@ -352,10 +353,21 @@ export class PedidosService {
       throw new AppError('Este pedido não pode mais ser aprovado', 400, 'INVALID_STATUS');
     }
 
-    await prisma.pedido.update({
-      where: { id: pedido.id },
-      data: { status: 'APROVADO' },
-    });
+    await prisma.$transaction([
+      prisma.pedido.update({
+        where: { id: pedido.id },
+        data: { status: 'APROVADO' },
+      }),
+      prisma.notificacao.create({
+        data: {
+          userId: pedido.userId,
+          pedidoId: pedido.id,
+          tipo: 'PEDIDO_APROVADO',
+          titulo: 'Pedido aceito pelo cliente',
+          mensagem: `${pedido.cliente.nome} aceitou o pedido ${pedido.numero}.`,
+        },
+      }),
+    ]);
 
     return this.findByToken(token);
   }

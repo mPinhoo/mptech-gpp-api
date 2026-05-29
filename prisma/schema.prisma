@@ -23,6 +23,7 @@ model User {
   despesas            Despesa[]
   kanbanColunas       KanbanColuna[]
   configPrecificacao  ConfigPrecificacao?
+  notificacoes        Notificacao[]
 }
 
 model Cliente {
@@ -134,6 +135,7 @@ model Pedido {
   updatedAt      DateTime      @updatedAt
   itens          ItemPedido[]
   extras         ExtraPedido[]
+  notificacoes   Notificacao[]
 
   @@unique([userId, numero])
   @@index([userId])
@@ -196,4 +198,24 @@ model CustoFixoConfig {
   config   ConfigPrecificacao @relation(fields: [configId], references: [id], onDelete: Cascade)
   nome     String
   valor    Decimal            @db.Decimal(10, 2)
+}
+
+enum TipoNotificacao {
+  PEDIDO_APROVADO
+}
+
+model Notificacao {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedidoId  String?
+  pedido    Pedido?           @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  tipo      TipoNotificacao
+  titulo    String
+  mensagem  String
+  lida      Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@index([userId, lida])
+  @@index([userId, createdAt])
 }
