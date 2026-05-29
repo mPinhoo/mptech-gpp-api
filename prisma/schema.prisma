@@ -14,6 +14,8 @@ model User {
   senha               String
   avatarUrl           String?              @db.Text
   ativo               Boolean              @default(true)
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   clientes            Cliente[]

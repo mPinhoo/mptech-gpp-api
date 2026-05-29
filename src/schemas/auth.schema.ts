@@ -31,3 +31,15 @@ export const updateProfileSchema = z
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Email inválido'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token inválido'),
+  novaSenha: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+});
+
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
