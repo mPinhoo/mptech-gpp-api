@@ -3,6 +3,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreatePedidoInput, UpdatePedidoInput } from '../schemas/pedido.schema.js';
+import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
 
 function formatDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -15,10 +16,27 @@ function formatCurrency(value: number): string {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function pedidoOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
+  const order = parseSortOrder(sortOrder);
+  return buildOrderBy(
+    sortBy,
+    sortOrder,
+    {
+      numero: { numero: order },
+      cliente: { cliente: { nome: order } },
+      data: { dataPedido: order },
+      valor: { valorTotal: order },
+      status: { status: order },
+      createdAt: { createdAt: order },
+    },
+    { createdAt: 'desc' }
+  );
+}
+
 export class PedidosService {
-  async findAll(userId: string, filters: { status?: string; search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: ListFilters & { status?: string }) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId };
@@ -43,7 +61,7 @@ export class PedidosService {
           cliente: { select: { nome: true } },
           kanbanColuna: { select: { nome: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: pedidoOrderBy(filters.sortBy, filters.sortOrder),
       }),
       prisma.pedido.count({ where }),
     ]);

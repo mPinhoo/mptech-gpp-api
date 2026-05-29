@@ -1,11 +1,24 @@
 import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreateProdutoInput, UpdateProdutoInput } from '../schemas/produto.schema.js';
+import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
+
+function produtoOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
+  const order = parseSortOrder(sortOrder);
+  const allowed: Record<string, Record<string, 'asc' | 'desc'>> = {
+    nome: { nome: order },
+    categoria: { categoria: order },
+    preco: { preco: order },
+    status: { status: order },
+    createdAt: { createdAt: order },
+  };
+  return buildOrderBy(sortBy, sortOrder, allowed, { createdAt: 'desc' });
+}
 
 export class ProdutosService {
-  async findAll(userId: string, filters: { status?: string; search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: ListFilters & { status?: string }) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId };
@@ -26,7 +39,7 @@ export class ProdutosService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: produtoOrderBy(filters.sortBy, filters.sortOrder),
       }),
       prisma.produto.count({ where }),
     ]);
@@ -91,7 +104,7 @@ export class ProdutosService {
       const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds }, userId } });
 
       if (mps.length !== mpIds.length) {
-        throw new AppError('Uma ou mais matérias-primas não encontradas', 400, 'INVALID_MATERIAIS');
+        throw new AppError('Uma ou mais mat├®rias-primas n├úo encontradas', 400, 'INVALID_MATERIAIS');
       }
 
       const mpMap = new Map(mps.map((mp) => [mp.id, mp]));
@@ -149,7 +162,7 @@ export class ProdutosService {
       const mps = await prisma.materiaPrima.findMany({ where: { id: { in: mpIds }, userId } });
 
       if (mps.length !== mpIds.length) {
-        throw new AppError('Uma ou mais matérias-primas não encontradas', 400, 'INVALID_MATERIAIS');
+        throw new AppError('Uma ou mais mat├®rias-primas n├úo encontradas', 400, 'INVALID_MATERIAIS');
       }
 
       const mpMap = new Map(mps.map((mp) => [mp.id, mp]));

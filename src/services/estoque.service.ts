@@ -7,6 +7,7 @@ import {
   SaidaEstoqueInput,
   UpdateEstoqueInput,
 } from '../schemas/estoque.schema.js';
+import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
 
 function calcularStatus(quantidade: number, quantidadeMinima: number): string {
   if (quantidade <= 0) return 'Crítico';
@@ -14,10 +15,27 @@ function calcularStatus(quantidade: number, quantidadeMinima: number): string {
   return 'Normal';
 }
 
+function estoqueOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
+  const order = parseSortOrder(sortOrder);
+  return buildOrderBy(
+    sortBy,
+    sortOrder,
+    {
+      nome: { nome: order },
+      quantidade: { quantidade: order },
+      minimo: { quantidadeMinima: order },
+      unidade: { unidade: order },
+      precoCusto: { precoCusto: order },
+      createdAt: { createdAt: order },
+    },
+    { nome: 'asc' }
+  );
+}
+
 export class EstoqueService {
-  async findAll(userId: string, filters: { search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: ListFilters) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId };
@@ -31,7 +49,7 @@ export class EstoqueService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: estoqueOrderBy(filters.sortBy, filters.sortOrder),
       }),
       prisma.materiaPrima.count({ where }),
     ]);

@@ -1,11 +1,29 @@
 import prisma from '../utils/prisma.js';
 import { NotFoundError } from '../utils/errors.js';
 import { CreateClienteInput, UpdateClienteInput } from '../schemas/cliente.schema.js';
+import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
+
+function clienteOrderBy(sortBy?: string, sortOrder?: 'asc' | 'desc') {
+  const order = parseSortOrder(sortOrder);
+  return buildOrderBy(
+    sortBy,
+    sortOrder,
+    {
+      nome: { nome: order },
+      email: { email: order },
+      telefone: { telefone: order },
+      documento: { documento: order },
+      endereco: { endereco: order },
+      createdAt: { createdAt: order },
+    },
+    { nome: 'asc' }
+  );
+}
 
 export class ClientesService {
-  async findAll(userId: string, filters: { search?: string; page?: number; limit?: number }) {
+  async findAll(userId: string, filters: ListFilters) {
     const page = filters.page || 1;
-    const limit = filters.limit || 20;
+    const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
 
     const where: Record<string, unknown> = { userId, ativo: true };
@@ -23,7 +41,7 @@ export class ClientesService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: clienteOrderBy(filters.sortBy, filters.sortOrder),
       }),
       prisma.cliente.count({ where }),
     ]);

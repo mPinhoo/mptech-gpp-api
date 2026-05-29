@@ -5,11 +5,13 @@ import { getUserId } from '../utils/tenant.js';
 export class ClientesController {
   async findAll(req: Request, res: Response, next: NextFunction) {
     try {
-      const { search, page, limit } = req.query;
+      const { search, page, limit, sortBy, sortOrder } = req.query;
       const result = await clientesService.findAll(getUserId(req), {
         search: search as string | undefined,
         page: page ? Number(page) : undefined,
         limit: limit ? Number(limit) : undefined,
+        sortBy: sortBy as string | undefined,
+        sortOrder: sortOrder as 'asc' | 'desc' | undefined,
       });
       res.json({ success: true, ...result });
     } catch (err) {
