@@ -24,6 +24,7 @@ model User {
   kanbanColunas       KanbanColuna[]
   configPrecificacao  ConfigPrecificacao?
   notificacoes        Notificacao[]
+  lembretes           Lembrete[]
 }
 
 model Cliente {
@@ -202,6 +203,24 @@ model CustoFixoConfig {
 
 enum TipoNotificacao {
   PEDIDO_APROVADO
+  AGENDA_LEMBRETE
+}
+
+model Lembrete {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo         String
+  descricao      String?
+  dataReferencia String
+  agendadoPara   DateTime
+  notificado     Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  notificacoes   Notificacao[]
+
+  @@index([userId, dataReferencia])
+  @@index([notificado, agendadoPara])
 }
 
 model Notificacao {
@@ -210,6 +229,8 @@ model Notificacao {
   user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   pedidoId  String?
   pedido    Pedido?           @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  lembreteId String?
+  lembrete  Lembrete?         @relation(fields: [lembreteId], references: [id], onDelete: SetNull)
   tipo      TipoNotificacao
   titulo    String
   mensagem  String

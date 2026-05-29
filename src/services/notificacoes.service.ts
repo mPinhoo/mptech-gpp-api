@@ -8,6 +8,7 @@ export class NotificacoesService {
       orderBy: { createdAt: 'desc' },
       include: {
         pedido: { select: { id: true, numero: true } },
+        lembrete: { select: { id: true, dataReferencia: true } },
       },
     });
 
@@ -19,6 +20,7 @@ export class NotificacoesService {
       lida: item.lida,
       createdAt: item.createdAt,
       pedido: item.pedido,
+      lembrete: item.lembrete,
     }));
   }
 
