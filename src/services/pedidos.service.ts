@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
@@ -97,6 +98,7 @@ export class PedidosService {
       status: pedido.status,
       valorTotal: Number(pedido.valorTotal),
       enviadoCliente: pedido.enviadoCliente,
+      linkToken: pedido.linkToken,
       itens: pedido.itens.map((item) => ({
         id: item.id,
         produtoId: item.produtoId,
@@ -274,12 +276,75 @@ export class PedidosService {
       throw new NotFoundError('Pedido');
     }
 
+    const linkToken = existing.linkToken ?? randomUUID();
+
     await prisma.pedido.update({
       where: { id },
-      data: { enviadoCliente: true },
+      data: { enviadoCliente: true, linkToken },
     });
 
     return this.findById(id);
+  }
+
+  async findByToken(token: string) {
+    const pedido = await prisma.pedido.findUnique({
+      where: { linkToken: token },
+      include: {
+        cliente: { select: { nome: true } },
+        itens: {
+          include: { produto: { select: { nome: true } } },
+        },
+        extras: true,
+      },
+    });
+
+    if (!pedido) {
+      throw new NotFoundError('Pedido');
+    }
+
+    return {
+      numero: pedido.numero,
+      cliente: pedido.cliente.nome,
+      dataPedido: pedido.dataPedido,
+      prazoEntrega: pedido.prazoEntrega,
+      status: pedido.status,
+      valorTotal: Number(pedido.valorTotal),
+      itens: pedido.itens.map((item) => ({
+        produto: item.produto.nome,
+        quantidade: item.quantidade,
+        precoUnitario: Number(item.precoUnitario),
+        subtotal: Number(item.subtotal),
+      })),
+      extras: pedido.extras.map((e) => ({
+        nome: e.nome,
+        valor: Number(e.valor),
+      })),
+    };
+  }
+
+  async aceitarByToken(token: string) {
+    const pedido = await prisma.pedido.findUnique({
+      where: { linkToken: token },
+    });
+
+    if (!pedido) {
+      throw new NotFoundError('Pedido');
+    }
+
+    if (pedido.status === 'APROVADO') {
+      return this.findByToken(token);
+    }
+
+    if (pedido.status !== 'PENDENTE') {
+      throw new AppError('Este pedido não pode mais ser aprovado', 400, 'INVALID_STATUS');
+    }
+
+    await prisma.pedido.update({
+      where: { id: pedido.id },
+      data: { status: 'APROVADO' },
+    });
+
+    return this.findByToken(token);
   }
 
   async cancel(id: string) {

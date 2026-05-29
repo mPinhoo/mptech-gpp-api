@@ -8,10 +8,12 @@ import pedidosRoutes from './pedidos.routes.js';
 import clientesRoutes from './clientes.routes.js';
 import precificacaoRoutes from './precificacao.routes.js';
 import kanbanRoutes from './kanban.routes.js';
+import publicRoutes from './public.routes.js';
 
 const router = Router();
 
 router.use('/auth', authRoutes);
+router.use('/public', publicRoutes);
 
 router.use('/dashboard', authMiddleware, dashboardRoutes);
 router.use('/produtos', authMiddleware, produtosRoutes);

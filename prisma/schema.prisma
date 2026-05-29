@@ -101,6 +101,7 @@ model Pedido {
   status          StatusPedido  @default(PENDENTE)
   valorTotal      Decimal       @db.Decimal(10, 2)
   enviadoCliente  Boolean       @default(false)
+  linkToken       String?       @unique
   kanbanColunaId  String?
   kanbanColuna    KanbanColuna? @relation(fields: [kanbanColunaId], references: [id], onDelete: SetNull)
   createdAt       DateTime      @default(now())
