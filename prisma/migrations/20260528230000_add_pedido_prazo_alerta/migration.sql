@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "TipoNotificacao" ADD VALUE 'PEDIDO_PRAZO_ALERTA';

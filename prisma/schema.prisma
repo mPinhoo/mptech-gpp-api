@@ -204,6 +204,7 @@ model CustoFixoConfig {
 enum TipoNotificacao {
   PEDIDO_APROVADO
   AGENDA_LEMBRETE
+  PEDIDO_PRAZO_ALERTA
 }
 
 model Lembrete {

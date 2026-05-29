@@ -6,6 +6,7 @@ import type {
   ReorderColunasInput,
 } from '../schemas/kanban.schema.js';
 import { ensureUserDefaults } from './user-setup.service.js';
+import { calcularAlertaPrazo } from '../utils/prazo-alerta.js';
 
 const pedidoSelect = {
   id: true,
@@ -17,6 +18,7 @@ const pedidoSelect = {
   status: true,
   valorTotal: true,
   kanbanColunaId: true,
+  kanbanColuna: { select: { nome: true } },
   itens: {
     select: {
       id: true,
@@ -50,7 +52,7 @@ export class KanbanService {
 
     return {
       colunas: colunas.map(formatColuna),
-      semColuna: semColuna.map(formatPedidoKanban),
+      semColuna: semColuna.map((p) => formatPedidoKanban(p, null)),
     };
   }
 
@@ -150,17 +152,23 @@ export class KanbanService {
 
 function formatColuna(c: Record<string, unknown>) {
   const pedidos = (c.pedidos as Array<Record<string, unknown>>) ?? [];
+  const nomeColuna = c.nome as string;
   return {
     id: c.id,
     nome: c.nome,
     ordem: c.ordem,
     sistema: c.sistema,
-    pedidos: pedidos.map(formatPedidoKanban),
+    pedidos: pedidos.map((pedido) => formatPedidoKanban(pedido, nomeColuna)),
   };
 }
 
-function formatPedidoKanban(p: Record<string, unknown>) {
+function formatPedidoKanban(p: Record<string, unknown>, nomeColuna?: string | null) {
   const itens = (p.itens as Array<Record<string, unknown>>) ?? [];
+  const prazoEntrega = p.prazoEntrega as Date;
+  const coluna =
+    nomeColuna ??
+    ((p.kanbanColuna as { nome: string } | null | undefined)?.nome ?? null);
+
   return {
     id: p.id,
     numero: p.numero,
@@ -170,6 +178,8 @@ function formatPedidoKanban(p: Record<string, unknown>) {
     status: p.status,
     valorTotal: Number(p.valorTotal),
     kanbanColunaId: p.kanbanColunaId,
+    colunaNome: coluna,
+    alertaPrazo: calcularAlertaPrazo(prazoEntrega, coluna),
     itens: itens.map((i) => ({
       id: i.id,
       produto: (i.produto as Record<string, unknown>)?.nome,
