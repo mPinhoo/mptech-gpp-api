@@ -1,4 +1,5 @@
 import { AppError } from './errors.js';
+import { combineDateTimeBR, extractDateBR } from './datetime-br.js';
 
 export type DashboardPeriod = {
   start: Date;
@@ -10,37 +11,45 @@ export type DashboardPeriod = {
 };
 
 function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+  return combineDateTimeBR(extractDateBR(date), '00:00');
 }
 
 function endOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
+  return combineDateTimeBR(extractDateBR(date), '23:59');
 }
 
 function toDateInput(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return extractDateBR(date);
 }
 
 function parseDateInput(value: string): Date {
-  return startOfDay(new Date(`${value}T12:00:00`));
+  return combineDateTimeBR(value, '00:00');
+}
+
+function endOfDayInput(value: string): Date {
+  return combineDateTimeBR(value, '23:59');
 }
 
 export function getDefaultDashboardPeriod(reference = new Date()): DashboardPeriod {
-  const start = startOfDay(new Date(reference.getFullYear(), reference.getMonth() - 1, 1));
-  const end = endOfDay(new Date(reference.getFullYear(), reference.getMonth(), 0));
-  const previousStart = startOfDay(new Date(start.getFullYear(), start.getMonth() - 1, 1));
-  const previousEnd = endOfDay(new Date(start.getFullYear(), start.getMonth(), 0));
+  const todayKey = extractDateBR(reference);
+  const [year, month] = todayKey.split('-').map(Number);
+  const startKey = `${year}-${String(month).padStart(2, '0')}-01`;
+  const start = parseDateInput(startKey);
+  const end = endOfDayInput(todayKey);
+  const previousStart = parseDateInput(
+    `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}-01`
+  );
+  const previousEnd = endOfDayInput(
+    extractDateBR(new Date(year, month - 1, 0))
+  );
 
   return {
     start,
     end,
     previousStart,
     previousEnd,
-    dataDe: toDateInput(start),
-    dataAte: toDateInput(end),
+    dataDe: startKey,
+    dataAte: todayKey,
   };
 }
 
@@ -58,14 +67,16 @@ export function resolveDashboardPeriod(
   }
 
   const start = parseDateInput(dataDe);
-  const end = endOfDay(parseDateInput(dataAte));
+  const end = endOfDayInput(dataAte);
 
   if (start > end) {
     throw new AppError('A data inicial deve ser anterior à data final', 400);
   }
 
   const durationMs = end.getTime() - start.getTime();
-  const previousEnd = endOfDay(new Date(start.getTime() - 24 * 60 * 60 * 1000));
+  const previousEnd = endOfDayInput(
+    extractDateBR(new Date(start.getTime() - 24 * 60 * 60 * 1000))
+  );
   const previousStart = startOfDay(new Date(previousEnd.getTime() - durationMs));
 
   return {

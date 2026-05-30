@@ -26,7 +26,7 @@ describe('DashboardService', () => {
   });
 
   describe('getStats', () => {
-    it('deve retornar estatísticas do período padrão (último mês)', async () => {
+    it('deve retornar estatísticas do período padrão (este mês)', async () => {
       mockPrisma.pedido.count.mockResolvedValue(10);
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 5000 } });
       mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 1000 } });
