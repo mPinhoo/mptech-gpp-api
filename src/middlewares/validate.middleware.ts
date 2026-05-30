@@ -14,10 +14,11 @@ export function validate(schemas: ValidateOptions) {
         req.body = schemas.body.parse(req.body);
       }
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query) as typeof req.query;
+        // Express 5: req.query é somente leitura — validar sem reatribuir
+        schemas.query.parse(req.query);
       }
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params);
+        schemas.params.parse(req.params);
       }
       next();
     } catch (err) {
