@@ -8,6 +8,8 @@ import type {
 import { ensureUserDefaults } from './user-setup.service.js';
 import { calcularAlertaPrazo } from '../utils/prazo-alerta.js';
 
+const COLUNA_FINALIZADO = 'Finalizado';
+
 const pedidoSelect = {
   id: true,
   numero: true,
@@ -147,6 +149,39 @@ export class KanbanService {
     });
 
     return formatPedidoKanban(updated);
+  }
+
+  async arquivarPedido(userId: string, pedidoId: string) {
+    const pedido = await prisma.pedido.findFirst({
+      where: { id: pedidoId, userId },
+      include: { kanbanColuna: { select: { nome: true } } },
+    });
+    if (!pedido) throw new NotFoundError('Pedido');
+    if (pedido.kanbanColuna?.nome !== COLUNA_FINALIZADO) {
+      throw new AppError('Apenas pedidos na coluna Finalizado podem ser arquivados', 400);
+    }
+
+    await prisma.pedido.update({
+      where: { id: pedidoId },
+      data: { status: 'CONCLUIDO', kanbanColunaId: null, linkToken: null },
+    });
+
+    return { message: 'Pedido arquivado' };
+  }
+
+  async arquivarTodosColuna(userId: string, colunaId: string) {
+    const coluna = await prisma.kanbanColuna.findFirst({ where: { id: colunaId, userId } });
+    if (!coluna) throw new NotFoundError('Coluna');
+    if (coluna.nome !== COLUNA_FINALIZADO) {
+      throw new AppError('Apenas a coluna Finalizado permite arquivar todos', 400);
+    }
+
+    const result = await prisma.pedido.updateMany({
+      where: { userId, kanbanColunaId: colunaId, status: 'APROVADO' },
+      data: { status: 'CONCLUIDO', kanbanColunaId: null, linkToken: null },
+    });
+
+    return { arquivados: result.count };
   }
 }
 

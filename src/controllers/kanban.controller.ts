@@ -64,6 +64,30 @@ export class KanbanController {
       next(err);
     }
   }
+
+  async arquivarPedido(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await kanbanService.arquivarPedido(
+        getUserId(req),
+        req.params.id as string
+      );
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async arquivarTodosColuna(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await kanbanService.arquivarTodosColuna(
+        getUserId(req),
+        req.params.id as string
+      );
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const kanbanController = new KanbanController();

@@ -16,5 +16,7 @@ router.put('/colunas/reorder', validate({ body: reorderColunasSchema }), kanbanC
 router.put('/colunas/:id', validate({ body: updateColunaSchema }), kanbanController.updateColuna);
 router.delete('/colunas/:id', kanbanController.deleteColuna);
 router.put('/pedidos/:id/mover', validate({ body: moverPedidoSchema }), kanbanController.moverPedido);
+router.put('/pedidos/:id/arquivar', kanbanController.arquivarPedido);
+router.put('/colunas/:id/arquivar-todos', kanbanController.arquivarTodosColuna);
 
 export default router;
