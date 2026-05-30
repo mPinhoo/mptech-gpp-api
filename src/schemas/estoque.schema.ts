@@ -22,6 +22,7 @@ export const updateEstoqueSchema = z.object({
   nome: z.string().min(2).optional(),
   unidade: z.string().min(1).optional(),
   precoCusto: z.number().min(0).optional(),
+  quantidade: z.number().int().min(0).optional(),
   quantidadeMinima: z.number().int().min(0).optional(),
 });
 
