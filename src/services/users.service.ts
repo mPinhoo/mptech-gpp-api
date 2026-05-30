@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
-import { ConflictError } from '../utils/errors.js';
-import { CreateUserInput } from '../schemas/users.schema.js';
+import { ConflictError, NotFoundError } from '../utils/errors.js';
+import { CreateUserInput, UpdateUserInput } from '../schemas/users.schema.js';
 import { initializeNewUser } from './user-setup.service.js';
 
 function formatUser(user: {
@@ -11,6 +11,8 @@ function formatUser(user: {
   avatarUrl?: string | null;
   ativo: boolean;
   createdAt: Date;
+  grupoPermissaoId?: string | null;
+  grupoPermissao?: { id: string; nome: string } | null;
 }) {
   return {
     id: user.id,
@@ -19,20 +21,28 @@ function formatUser(user: {
     avatarUrl: user.avatarUrl ?? null,
     ativo: user.ativo,
     createdAt: user.createdAt,
+    grupoPermissaoId: user.grupoPermissaoId ?? null,
+    grupoPermissao: user.grupoPermissao
+      ? { id: user.grupoPermissao.id, nome: user.grupoPermissao.nome }
+      : null,
   };
 }
+
+const userSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  avatarUrl: true,
+  ativo: true,
+  createdAt: true,
+  grupoPermissaoId: true,
+  grupoPermissao: { select: { id: true, nome: true } },
+} as const;
 
 export class UsersService {
   async findAll() {
     const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        avatarUrl: true,
-        ativo: true,
-        createdAt: true,
-      },
+      select: userSelect,
       orderBy: { createdAt: 'desc' },
     });
 
@@ -48,6 +58,15 @@ export class UsersService {
       throw new ConflictError('Email já cadastrado');
     }
 
+    if (data.grupoPermissaoId) {
+      const grupo = await prisma.grupoPermissao.findUnique({
+        where: { id: data.grupoPermissaoId },
+      });
+      if (!grupo) {
+        throw new NotFoundError('Grupo de permissões');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(data.senha, 10);
 
     const user = await prisma.user.create({
@@ -55,20 +74,39 @@ export class UsersService {
         nome: data.nome,
         email: data.email,
         senha: hashedPassword,
+        grupoPermissaoId: data.grupoPermissaoId ?? null,
       },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        avatarUrl: true,
-        ativo: true,
-        createdAt: true,
-      },
+      select: userSelect,
     });
 
     await initializeNewUser(user.id);
 
     return formatUser(user);
+  }
+
+  async update(id: string, data: UpdateUserInput) {
+    const user = await prisma.user.findUnique({ where: { id } });
+
+    if (!user) {
+      throw new NotFoundError('Usuário');
+    }
+
+    if (data.grupoPermissaoId) {
+      const grupo = await prisma.grupoPermissao.findUnique({
+        where: { id: data.grupoPermissaoId },
+      });
+      if (!grupo) {
+        throw new NotFoundError('Grupo de permissões');
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { grupoPermissaoId: data.grupoPermissaoId },
+      select: userSelect,
+    });
+
+    return formatUser(updated);
   }
 }
 

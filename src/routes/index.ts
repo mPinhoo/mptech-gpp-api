@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
-import { adminMiddleware } from '../middlewares/admin.middleware.js';
+import { permissionMiddleware } from '../middlewares/permission.middleware.js';
 import authRoutes from './auth.routes.js';
 import usersRoutes from './users.routes.js';
+import permissoesRoutes from './permissoes.routes.js';
 import dashboardRoutes from './dashboard.routes.js';
 import produtosRoutes from './produtos.routes.js';
 import estoqueRoutes from './estoque.routes.js';
@@ -18,16 +19,19 @@ const router = Router();
 
 router.use('/auth', authRoutes);
 router.use('/public', publicRoutes);
-router.use('/users', authMiddleware, adminMiddleware, usersRoutes);
 
-router.use('/dashboard', authMiddleware, dashboardRoutes);
-router.use('/produtos', authMiddleware, produtosRoutes);
-router.use('/estoque', authMiddleware, estoqueRoutes);
-router.use('/pedidos', authMiddleware, pedidosRoutes);
-router.use('/clientes', authMiddleware, clientesRoutes);
-router.use('/precificacao', authMiddleware, precificacaoRoutes);
-router.use('/kanban', authMiddleware, kanbanRoutes);
-router.use('/notificacoes', authMiddleware, notificacoesRoutes);
-router.use('/agenda', authMiddleware, agendaRoutes);
+const protectedRoute = [authMiddleware, permissionMiddleware] as const;
+
+router.use('/users', ...protectedRoute, usersRoutes);
+router.use('/permissoes', ...protectedRoute, permissoesRoutes);
+router.use('/dashboard', ...protectedRoute, dashboardRoutes);
+router.use('/produtos', ...protectedRoute, produtosRoutes);
+router.use('/estoque', ...protectedRoute, estoqueRoutes);
+router.use('/pedidos', ...protectedRoute, pedidosRoutes);
+router.use('/clientes', ...protectedRoute, clientesRoutes);
+router.use('/precificacao', ...protectedRoute, precificacaoRoutes);
+router.use('/kanban', ...protectedRoute, kanbanRoutes);
+router.use('/notificacoes', ...protectedRoute, notificacoesRoutes);
+router.use('/agenda', ...protectedRoute, agendaRoutes);
 
 export default router;

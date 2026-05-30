@@ -16,6 +16,8 @@ model User {
   ativo               Boolean              @default(true)
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
+  grupoPermissaoId    String?
+  grupoPermissao      GrupoPermissao?      @relation(fields: [grupoPermissaoId], references: [id], onDelete: SetNull)
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   clientes            Cliente[]
@@ -27,6 +29,31 @@ model User {
   configPrecificacao  ConfigPrecificacao?
   notificacoes        Notificacao[]
   lembretes           Lembrete[]
+
+  @@index([grupoPermissaoId])
+}
+
+model GrupoPermissao {
+  id         String          @id @default(uuid())
+  nome       String          @unique
+  descricao  String?
+  sistema    Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  permissoes PermissaoMenu[]
+  users      User[]
+}
+
+model PermissaoMenu {
+  id      String         @id @default(uuid())
+  grupoId String
+  grupo   GrupoPermissao @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  menu    String
+  leitura Boolean        @default(false)
+  criar   Boolean        @default(false)
+  editar  Boolean        @default(false)
+
+  @@unique([grupoId, menu])
 }
 
 model Cliente {
