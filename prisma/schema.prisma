@@ -14,6 +14,21 @@ model User {
   senha               String
   avatarUrl           String?              @db.Text
   ativo               Boolean              @default(true)
+  documento           String?
+  dataNascimento      DateTime?
+  nomeFantasia        String?
+  usarNomeFantasia    Boolean              @default(true)
+  genero              String?
+  nacionalidade       String?
+  telefone            String?
+  endereco            String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cep                 String?
+  pais                String?
+  estado              String?
+  cidade              String?
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
   grupoPermissaoId    String?
