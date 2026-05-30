@@ -26,7 +26,7 @@ describe('DashboardService', () => {
   });
 
   describe('getStats', () => {
-    it('deve retornar estatísticas do mês', async () => {
+    it('deve retornar estatísticas do período padrão (último mês)', async () => {
       mockPrisma.pedido.count.mockResolvedValue(10);
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 5000 } });
       mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 1000 } });
@@ -38,6 +38,8 @@ describe('DashboardService', () => {
       expect(result).toHaveProperty('despesas');
       expect(result).toHaveProperty('saldoMes');
       expect(result).toHaveProperty('trends');
+      expect(result.periodo).toHaveProperty('dataDe');
+      expect(result.periodo).toHaveProperty('dataAte');
     });
 
     it('deve calcular saldo como faturamento - despesas', async () => {
@@ -45,7 +47,7 @@ describe('DashboardService', () => {
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 20000 } });
       mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 5000 } });
 
-      const result = await service.getStats(USER_ID);
+      const result = await service.getStats(USER_ID, '2026-04-01', '2026-04-30');
 
       expect(result.saldoMes).toBe(result.faturamento - result.despesas);
     });
@@ -55,12 +57,13 @@ describe('DashboardService', () => {
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 1500 } });
       mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 0 } });
 
-      await service.getStats(USER_ID);
+      await service.getStats(USER_ID, '2026-04-01', '2026-04-30');
 
       expect(mockPrisma.pedido.aggregate).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             status: { in: ['APROVADO', 'CONCLUIDO'] },
+            dataPedido: expect.any(Object),
           }),
         })
       );
@@ -68,16 +71,26 @@ describe('DashboardService', () => {
   });
 
   describe('getChart', () => {
-    it('deve retornar dados dos últimos 5 meses', async () => {
+    it('deve retornar dados semanais para período curto', async () => {
       mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 10000 } });
       mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 2000 } });
 
-      const result = await service.getChart(USER_ID);
+      const result = await service.getChart(USER_ID, '2026-04-01', '2026-04-30');
 
-      expect(result).toHaveLength(5);
+      expect(result.length).toBeGreaterThan(0);
       expect(result[0]).toHaveProperty('mes');
       expect(result[0]).toHaveProperty('faturamento');
       expect(result[0]).toHaveProperty('despesas');
+    });
+
+    it('deve retornar dados mensais para período longo', async () => {
+      mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 10000 } });
+      mockPrisma.despesa.aggregate.mockResolvedValue({ _sum: { valor: 2000 } });
+
+      const result = await service.getChart(USER_ID, '2026-01-01', '2026-06-30');
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result[0]).toHaveProperty('mes');
     });
   });
 });
