@@ -22,7 +22,7 @@ export class AuthController {
 
   async me(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await authService.me(req.user!.userId);
+      const result = await authService.me(req.user!.userId, req.user!);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
@@ -32,6 +32,15 @@ export class AuthController {
   async updateProfile(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await authService.updateProfile(req.user!.userId, req.body);
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async stopImpersonate(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.stopImpersonate(req.user!);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);

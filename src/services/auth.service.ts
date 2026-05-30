@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
-import { signToken } from '../utils/jwt.js';
-import { UnauthorizedError, ConflictError } from '../utils/errors.js';
+import { signToken, type JwtPayload } from '../utils/jwt.js';
+import { UnauthorizedError, ConflictError, ForbiddenError, AppError, NotFoundError } from '../utils/errors.js';
 import { LoginInput, RegisterInput, UpdateProfileInput } from '../schemas/auth.schema.js';
 import { initializeNewUser } from './user-setup.service.js';
 import { validateAvatarUrl } from '../utils/avatar.js';
@@ -9,7 +9,18 @@ import { getUserPermissoes } from './permissions.service.js';
 import { MenuPermissao } from '../constants/menus.js';
 import { isAdminEmail } from '../utils/admin.js';
 
-async function buildAuthUser(user: {
+const userAuthSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  avatarUrl: true,
+  ativo: true,
+  createdAt: true,
+  grupoPermissaoId: true,
+  grupoPermissao: { select: { id: true, nome: true } },
+} as const;
+
+type AuthUserRecord = {
   id: string;
   nome: string;
   email: string;
@@ -18,10 +29,13 @@ async function buildAuthUser(user: {
   createdAt?: Date;
   grupoPermissaoId?: string | null;
   grupoPermissao?: { id: string; nome: string } | null;
-}) {
-  const permissoes: MenuPermissao[] = await getUserPermissoes(user.id, user.email);
+};
 
-  return {
+async function buildAuthUser(user: AuthUserRecord, jwtPayload?: JwtPayload) {
+  const permissoes: MenuPermissao[] = await getUserPermissoes(user.id, user.email);
+  const isImpersonating = !!jwtPayload?.impersonatedBy;
+
+  const base = {
     id: user.id,
     nome: user.nome,
     email: user.email,
@@ -32,8 +46,29 @@ async function buildAuthUser(user: {
     grupoPermissao: user.grupoPermissao
       ? { id: user.grupoPermissao.id, nome: user.grupoPermissao.nome }
       : null,
-    isAdmin: isAdminEmail(user.email),
+    isAdmin: isImpersonating ? false : isAdminEmail(user.email),
     permissoes,
+    isImpersonating,
+  };
+
+  if (!isImpersonating || !jwtPayload?.impersonatedBy) {
+    return base;
+  }
+
+  const admin = await prisma.user.findUnique({
+    where: { id: jwtPayload.impersonatedBy },
+    select: { id: true, nome: true, email: true },
+  });
+
+  return {
+    ...base,
+    impersonatedBy: admin
+      ? { id: admin.id, nome: admin.nome, email: admin.email }
+      : {
+          id: jwtPayload.impersonatedBy,
+          nome: 'Administrador',
+          email: jwtPayload.impersonatedByEmail ?? '',
+        },
   };
 }
 
@@ -91,26 +126,17 @@ export class AuthService {
     };
   }
 
-  async me(userId: string) {
+  async me(userId: string, jwtPayload?: JwtPayload) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        nome: true,
-        email: true,
-        avatarUrl: true,
-        ativo: true,
-        createdAt: true,
-        grupoPermissaoId: true,
-        grupoPermissao: { select: { id: true, nome: true } },
-      },
+      select: userAuthSelect,
     });
 
     if (!user) {
       throw new UnauthorizedError('Usuário não encontrado');
     }
 
-    return buildAuthUser(user);
+    return buildAuthUser(user, jwtPayload);
   }
 
   async updateProfile(userId: string, data: UpdateProfileInput) {
@@ -149,6 +175,70 @@ export class AuthService {
     });
 
     return buildAuthUser(updated);
+  }
+
+  async impersonate(adminUserId: string, adminEmail: string, targetUserId: string) {
+    if (!isAdminEmail(adminEmail)) {
+      throw new ForbiddenError('Acesso restrito a administradores');
+    }
+
+    if (adminUserId === targetUserId) {
+      throw new AppError('Não é possível impersonar a si mesmo', 400);
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: targetUserId },
+      select: userAuthSelect,
+    });
+
+    if (!target) {
+      throw new NotFoundError('Usuário');
+    }
+
+    if (!target.ativo) {
+      throw new AppError('Usuário inativo não pode ser impersonado', 400);
+    }
+
+    const token = signToken({
+      userId: target.id,
+      email: target.email,
+      impersonatedBy: adminUserId,
+      impersonatedByEmail: adminEmail,
+    });
+
+    const jwtPayload: JwtPayload = {
+      userId: target.id,
+      email: target.email,
+      impersonatedBy: adminUserId,
+      impersonatedByEmail: adminEmail,
+    };
+
+    return {
+      token,
+      user: await buildAuthUser(target, jwtPayload),
+    };
+  }
+
+  async stopImpersonate(jwtPayload: JwtPayload) {
+    if (!jwtPayload.impersonatedBy) {
+      throw new AppError('Você não está impersonando nenhum usuário', 400);
+    }
+
+    const admin = await prisma.user.findUnique({
+      where: { id: jwtPayload.impersonatedBy },
+      select: userAuthSelect,
+    });
+
+    if (!admin || !admin.ativo) {
+      throw new UnauthorizedError('Administrador não encontrado');
+    }
+
+    const token = signToken({ userId: admin.id, email: admin.email });
+
+    return {
+      token,
+      user: await buildAuthUser(admin),
+    };
   }
 }
 

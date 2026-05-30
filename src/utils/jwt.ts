@@ -5,6 +5,8 @@ const SECRET = process.env.JWT_SECRET || 'default-secret';
 export interface JwtPayload {
   userId: string;
   email: string;
+  impersonatedBy?: string;
+  impersonatedByEmail?: string;
 }
 
 export function signToken(payload: JwtPayload): string {

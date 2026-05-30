@@ -10,5 +10,6 @@ router.post('/login', validate({ body: loginSchema }), authController.login);
 router.post('/register', validate({ body: registerSchema }), authController.register);
 router.get('/me', authMiddleware, authController.me);
 router.put('/profile', authMiddleware, validate({ body: updateProfileSchema }), authController.updateProfile);
+router.post('/stop-impersonate', authMiddleware, authController.stopImpersonate);
 
 export default router;

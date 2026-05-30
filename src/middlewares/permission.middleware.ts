@@ -63,6 +63,7 @@ const ROUTE_PERMISSIONS: RoutePermissionRule[] = [
   { method: 'PATCH', pattern: /^\/notificacoes\//, menu: 'home', acao: 'editar' },
   { method: 'GET', pattern: /^\/users(\/|$)/, menu: 'administrativo_usuarios', acao: 'leitura' },
   { method: 'POST', pattern: /^\/users(\/|$)/, menu: 'administrativo_usuarios', acao: 'criar' },
+  { method: 'POST', pattern: /^\/users\/[^/]+\/impersonate$/, menu: 'administrativo_usuarios', acao: 'editar' },
   { method: 'PUT', pattern: /^\/users\//, menu: 'administrativo_usuarios', acao: 'editar' },
   { method: 'GET', pattern: /^\/permissoes(\/|$)/, menu: 'administrativo_permissoes', acao: 'leitura' },
   { method: 'POST', pattern: /^\/permissoes(\/|$)/, menu: 'administrativo_permissoes', acao: 'criar' },
