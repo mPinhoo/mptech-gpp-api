@@ -45,6 +45,29 @@ export class AgendaController {
     }
   }
 
+  async findPedidosByRange(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { de, ate } = req.query;
+
+      if (!de || !ate) {
+        res.status(400).json({
+          success: false,
+          message: 'Parâmetros de e ate são obrigatórios',
+        });
+        return;
+      }
+
+      const result = await agendaService.findPedidosByRange(
+        getUserId(req),
+        de as string,
+        ate as string
+      );
+      res.json({ success: true, data: result });
+    } catch (err) {
+      next(err);
+    }
+  }
+
   async create(req: Request, res: Response, next: NextFunction) {
     try {
       const result = await agendaService.create(getUserId(req), req.body);

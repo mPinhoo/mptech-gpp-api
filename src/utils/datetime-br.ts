@@ -34,6 +34,21 @@ export function startOfDayBR(date: Date = new Date()): Date {
   return combineDateTimeBR(`${year}-${month}-${day}`, '00:00');
 }
 
+export function extractDateBR(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: APP_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === 'year')?.value ?? '1970';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '01';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '01';
+
+  return `${year}-${month}-${day}`;
+}
+
 export function endOfDayBR(date: Date = new Date()): Date {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_TIMEZONE,

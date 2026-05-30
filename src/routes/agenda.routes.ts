@@ -5,6 +5,7 @@ import { createLembreteSchema, updateLembreteSchema } from '../schemas/agenda.sc
 
 const router = Router();
 
+router.get('/pedidos', agendaController.findPedidosByRange);
 router.get('/', agendaController.findByRange);
 router.get('/dia', agendaController.findByDay);
 router.post('/', validate({ body: createLembreteSchema }), agendaController.create);

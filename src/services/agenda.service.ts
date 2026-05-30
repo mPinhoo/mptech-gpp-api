@@ -3,6 +3,7 @@ import { AppError, NotFoundError } from '../utils/errors.js';
 import { CreateLembreteInput, UpdateLembreteInput } from '../schemas/agenda.schema.js';
 import {
   combineDateTimeBR,
+  extractDateBR,
   extractTimeBR,
 } from '../utils/datetime-br.js';
 
@@ -144,6 +145,42 @@ export class AgendaService {
     }
 
     await prisma.lembrete.delete({ where: { id } });
+  }
+
+  async findPedidosByRange(userId: string, de: string, ate: string) {
+    const start = combineDateTimeBR(de, '00:00');
+    const end = combineDateTimeBR(ate, '23:59');
+
+    const statusMap: Record<string, string> = {
+      PENDENTE: 'Pendente',
+      APROVADO: 'Aprovado',
+      CONCLUIDO: 'Concluído',
+      CANCELADO: 'Cancelado',
+    };
+
+    const pedidos = await prisma.pedido.findMany({
+      where: {
+        userId,
+        status: { not: 'CANCELADO' },
+        prazoEntrega: { gte: start, lte: end },
+      },
+      include: {
+        cliente: { select: { nome: true } },
+      },
+      orderBy: [{ prazoEntrega: 'asc' }, { numero: 'asc' }],
+    });
+
+    return pedidos.map((pedido) => ({
+      id: pedido.id,
+      numero: pedido.numero,
+      cliente: pedido.cliente.nome,
+      prazoEntrega: extractDateBR(pedido.prazoEntrega),
+      status: statusMap[pedido.status] || pedido.status,
+      valor: Number(pedido.valorTotal).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+      }),
+    }));
   }
 }
 
