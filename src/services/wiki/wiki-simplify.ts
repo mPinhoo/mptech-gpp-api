@@ -91,7 +91,7 @@ export function buildUserFriendlyExcerpt(raw: string): string {
   const title = simplified.match(/^#\s+(.+)$/m)?.[1];
 
   const where = simplified.match(/## Onde fazer no sistema[\s\S]*?(?=\n## |$)/i)?.[0];
-  const rules = simplified.match(/## Regras de negócio[\s\S]*?(?=\n## |$)/i)?.[0;
+  const rules = simplified.match(/## Regras de negócio[\s\S]*?(?=\n## |$)/i)?.[0];
 
   const parts: string[] = [];
   if (title) parts.push(`**${title}**`);
