@@ -13,6 +13,7 @@ import precificacaoRoutes from './precificacao.routes.js';
 import kanbanRoutes from './kanban.routes.js';
 import notificacoesRoutes from './notificacoes.routes.js';
 import agendaRoutes from './agenda.routes.js';
+import chatRoutes from './chat.routes.js';
 import publicRoutes from './public.routes.js';
 
 const router = Router();
@@ -33,5 +34,6 @@ router.use('/precificacao', ...protectedRoute, precificacaoRoutes);
 router.use('/kanban', ...protectedRoute, kanbanRoutes);
 router.use('/notificacoes', ...protectedRoute, notificacoesRoutes);
 router.use('/agenda', ...protectedRoute, agendaRoutes);
+router.use('/chat', ...protectedRoute, chatRoutes);
 
 export default router;

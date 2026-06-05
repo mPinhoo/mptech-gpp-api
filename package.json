@@ -13,7 +13,8 @@
     "generate": "prisma generate",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "sync-wiki": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('..','mptech-gpp-wiki','wiki');const dest=path.join('wiki');if(!fs.existsSync(src)){console.error('Wiki não encontrada em',src);process.exit(1)}fs.cpSync(src,dest,{recursive:true});console.log('Wiki sincronizada para',dest)\""
   },
   "engines": {
     "node": ">=22.0.0"
