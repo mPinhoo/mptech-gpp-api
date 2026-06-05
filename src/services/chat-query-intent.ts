@@ -19,12 +19,18 @@ function extractPeriodo(text: string): Record<string, unknown> {
   const dias = extractDias(text);
   if (dias) return { periodo: 'ultimos_n_dias', dias };
   if (/at[eé]\s+hoje|todo\s+hist|desde\s+sempre/i.test(text)) return { periodo: 'ate_hoje' };
-  if (/m[eê]s\s+passado/i.test(text)) return { periodo: 'mes_passado' };
-  if (/[uú]ltimo\s+ano|365/i.test(text)) return { periodo: 'ano' };
-  if (/semana|7\s*dias/i.test(text)) return { periodo: 'semana' };
+  if (/m[eê]s\s+passado|[uú]ltimo\s+m[eê]s(?!\s+e\s+)/i.test(text)) return { periodo: 'mes_passado' };
+  if (/[uú]ltimo\s+ano|[uú]ltimos?\s+12\s+meses|365\s*dias?/i.test(text)) return { periodo: 'ano' };
+  if (/[uú]ltima\s+semana|esta\s+semana|semana|7\s*dias/i.test(text)) return { periodo: 'semana' };
   if (/hoje|do\s+dia/i.test(text)) return { periodo: 'hoje' };
-  if (/m[eê]s/i.test(text)) return { periodo: 'mes' };
+  if (/este\s+m[eê]s|m[eê]s\s+atual|neste\s+m[eê]s|m[eê]s/i.test(text)) return { periodo: 'mes' };
   return { periodo: 'mes' };
+}
+
+function isFaturamentoQuestion(text: string): boolean {
+  return /faturamento|faturei|faturou|quanto\s+vendi|quanto\s+ganhei|receita|vendas?\s+(de|do|da|no|na)/i.test(
+    text
+  );
 }
 
 function extractStatus(text: string): string | undefined {
@@ -74,6 +80,14 @@ export function matchDataQuery(message: string): DataQueryMatch | null {
     };
   }
 
+  if (isFaturamentoQuestion(text)) {
+    const incluirDespesas = /despesas?|saldo|resumo\s+financeiro|lucro/i.test(text);
+    return {
+      tool: incluirDespesas ? 'consultar_resumo_financeiro' : 'consultar_faturamento',
+      args: extractPeriodo(text),
+    };
+  }
+
   if (
     /pedidos?/i.test(text) &&
     /quantos|quais|total|aprovad|pendente|cancelad|conclu|valor|fiz|tive|lista|[uú]ltimos?|semana|m[eê]s|hoje|ano|dias?/i.test(
@@ -96,10 +110,6 @@ export function matchDataQuery(message: string): DataQueryMatch | null {
       tool: 'consultar_clientes',
       args: { tipo: 'inativos', dias_sem_pedir: extractDias(text) ?? 30 },
     };
-  }
-
-  if (/faturamento|quanto\s+faturei|resumo\s+financeiro|despesas?/i.test(text)) {
-    return { tool: 'consultar_resumo_financeiro', args: extractPeriodo(text) };
   }
 
   return null;
@@ -177,8 +187,25 @@ export function formatToolResult(tool: string, result: unknown): string {
       return materiais.map((m, i) => `${i + 1}. **${m.nome}** — ${m.quantidade} ${m.unidade}`).join('\n');
     }
 
+    case 'consultar_faturamento': {
+      const detalhe = (data.detalhePorStatus as Array<{ status: string; quantidade: number; valor: number }>) || [];
+      let reply = `Faturamento ${data.periodo}: **${formatCurrency(data.faturamento as number)}**`;
+      reply += `\n\n• **${data.pedidosFaturados}** pedido(s) aprovados/concluídos`;
+      if (data.ticketMedio) {
+        reply += `\n• Ticket médio: **${formatCurrency(data.ticketMedio as number)}**`;
+      }
+      if (detalhe.length > 0) {
+        reply += `\n\nDetalhe:\n${detalhe.map((d) => `• ${d.status}: **${formatCurrency(d.valor)}** (${d.quantidade} pedidos)`).join('\n')}`;
+      }
+      if (data.despesas !== undefined) {
+        reply += `\n\n• Despesas: **${formatCurrency(data.despesas as number)}**`;
+        reply += `\n• Saldo: **${formatCurrency(data.saldo as number)}**`;
+      }
+      return reply;
+    }
+
     case 'consultar_resumo_financeiro':
-      return `Resumo ${data.periodo}:\n• Pedidos: **${data.totalPedidos}**\n• Faturamento: **${formatCurrency(data.faturamento as number)}**\n• Despesas: **${formatCurrency(data.despesas as number)}**\n• Saldo: **${formatCurrency(data.saldo as number)}**`;
+      return formatToolResult('consultar_faturamento', { ...data, despesas: data.despesas, saldo: data.saldo });
 
     case 'consultar_clientes_recorrentes':
       return formatToolResult('consultar_clientes', { ...data, tipo: 'recorrentes' });

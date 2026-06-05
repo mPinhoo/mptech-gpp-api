@@ -473,42 +473,81 @@ export class ChatQueryService {
     };
   }
 
-  async getResumoFinanceiro(ctx: ChatUserContext, periodoInput: PeriodoInput = {}) {
+  async getFaturamento(
+    ctx: ChatUserContext,
+    periodoInput: PeriodoInput = {},
+    incluirDespesas = false
+  ) {
     const perm = await checkPermission(ctx, 'home');
     if (!perm.allowed) return { error: perm.message };
 
     const range = resolveChatPeriodo(periodoInput);
     const dataPedidoFilter = periodoToDateFilter(range);
-    const createdAtFilter = periodoToDateFilter(range);
+    const faturamentoWhere = {
+      userId: ctx.userId,
+      status: { in: ['APROVADO', 'CONCLUIDO'] as const },
+      dataPedido: dataPedidoFilter,
+    };
 
-    const [totalPedidos, faturamento, despesas] = await Promise.all([
+    const [totalPedidos, faturamentoAgg, porStatus, despesasAgg] = await Promise.all([
       prisma.pedido.count({
         where: { userId: ctx.userId, dataPedido: dataPedidoFilter },
       }),
       prisma.pedido.aggregate({
-        where: {
-          userId: ctx.userId,
-          status: { in: ['APROVADO', 'CONCLUIDO'] },
-          dataPedido: dataPedidoFilter,
-        },
+        where: faturamentoWhere,
         _sum: { valorTotal: true },
+        _count: { id: true },
       }),
-      prisma.despesa.aggregate({
-        where: { userId: ctx.userId, createdAt: createdAtFilter },
-        _sum: { valor: true },
+      prisma.pedido.groupBy({
+        by: ['status'],
+        where: faturamentoWhere,
+        _sum: { valorTotal: true },
+        _count: { id: true },
       }),
+      incluirDespesas
+        ? prisma.despesa.aggregate({
+            where: { userId: ctx.userId, createdAt: periodoToDateFilter(range) },
+            _sum: { valor: true },
+          })
+        : Promise.resolve({ _sum: { valor: null } }),
     ]);
 
-    const fat = Number(faturamento._sum.valorTotal || 0);
-    const desp = Number(despesas._sum.valor || 0);
+    const fat = Number(faturamentoAgg._sum.valorTotal || 0);
+    const pedidosFaturados = faturamentoAgg._count.id;
+    const ticketMedio = pedidosFaturados > 0 ? fat / pedidosFaturados : 0;
+    const desp = Number(despesasAgg._sum.valor || 0);
 
-    return {
+    const detalheStatus = porStatus.map(
+      (g: { status: string; _sum: { valorTotal: unknown }; _count: { id: number } }) => ({
+        status: STATUS_LABEL[g.status] || g.status,
+        quantidade: g._count.id,
+        valor: Number(g._sum.valorTotal || 0),
+      })
+    );
+
+    const result: Record<string, unknown> = {
       periodo: range.label,
-      totalPedidos,
+      dataDe: range.start ? formatDateBR(range.start) : null,
+      dataAte: formatDateBR(range.end),
       faturamento: fat,
-      despesas: desp,
-      saldo: fat - desp,
+      pedidosFaturados,
+      ticketMedio,
+      totalPedidosNoPeriodo: totalPedidos,
+      detalhePorStatus: detalheStatus,
+      regra:
+        'Faturamento = soma do valor de pedidos Aprovados e Concluídos, pela data do pedido.',
     };
+
+    if (incluirDespesas) {
+      result.despesas = desp;
+      result.saldo = fat - desp;
+    }
+
+    return result;
+  }
+
+  async getResumoFinanceiro(ctx: ChatUserContext, periodoInput: PeriodoInput = {}) {
+    return this.getFaturamento(ctx, periodoInput, true);
   }
 
   // Aliases para compatibilidade

@@ -67,6 +67,26 @@ describe('ChatQueryService', () => {
     });
   });
 
+  describe('getFaturamento', () => {
+    it('retorna faturamento e detalhe por status', async () => {
+      mockPrisma.pedido.count.mockResolvedValue(10);
+      mockPrisma.pedido.aggregate.mockResolvedValue({
+        _sum: { valorTotal: 5000 },
+        _count: { id: 4 },
+      });
+      mockPrisma.pedido.groupBy.mockResolvedValue([
+        { status: 'APROVADO', _sum: { valorTotal: 3000 }, _count: { id: 2 } },
+        { status: 'CONCLUIDO', _sum: { valorTotal: 2000 }, _count: { id: 2 } },
+      ]);
+
+      const result = await service.getFaturamento(ctx, { periodo: 'semana' });
+
+      expect(result.faturamento).toBe(5000);
+      expect(result.pedidosFaturados).toBe(4);
+      expect(result.detalhePorStatus).toHaveLength(2);
+    });
+  });
+
   describe('getPedidos', () => {
     it('retorna contagem e resumo por status', async () => {
       mockPrisma.pedido.count.mockResolvedValue(5);

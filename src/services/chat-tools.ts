@@ -153,8 +153,28 @@ export const CHAT_TOOLS = [
   {
     type: 'function' as const,
     function: {
+      name: 'consultar_faturamento',
+      description:
+        'Consulta FATURAMENTO (receita de vendas). Use para: "quanto faturei", "faturamento da semana/mês/ano", "faturamento dos últimos N dias", período específico. Faturamento = pedidos Aprovados + Concluídos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          ...PERIODO_PARAMS,
+          incluir_despesas: {
+            type: 'boolean',
+            description: 'Se true, inclui também despesas e saldo. Padrão false (só faturamento).',
+          },
+        },
+        required: [],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
       name: 'consultar_resumo_financeiro',
-      description: 'Faturamento, despesas, saldo e total de pedidos em um período.',
+      description:
+        'Resumo financeiro completo: faturamento + despesas + saldo. Preferir consultar_faturamento quando o usuário perguntar só sobre faturamento/receita/vendas.',
       parameters: {
         type: 'object',
         properties: { ...PERIODO_PARAMS },
@@ -211,6 +231,13 @@ export async function executeChatTool(
         buildPeriodoArgs(args),
         (args.limite as number) || 10,
         (args.ordenar as 'mais' | 'menos') || 'mais'
+      );
+
+    case 'consultar_faturamento':
+      return chatQueryService.getFaturamento(
+        ctx,
+        buildPeriodoArgs(args),
+        args.incluir_despesas === true
       );
 
     case 'consultar_resumo_financeiro':

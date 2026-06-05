@@ -32,10 +32,38 @@ describe('chat-query-intent', () => {
       });
     });
 
+    it('detecta faturamento da última semana', () => {
+      expect(matchDataQuery('Qual o faturamento da última semana?')).toEqual({
+        tool: 'consultar_faturamento',
+        args: { periodo: 'semana' },
+      });
+    });
+
+    it('detecta faturamento dos últimos N dias', () => {
+      expect(matchDataQuery('Quanto faturei nos últimos 15 dias?')).toEqual({
+        tool: 'consultar_faturamento',
+        args: { periodo: 'ultimos_n_dias', dias: 15 },
+      });
+    });
+
+    it('detecta faturamento do último ano', () => {
+      expect(matchDataQuery('Faturamento do último ano')).toEqual({
+        tool: 'consultar_faturamento',
+        args: { periodo: 'ano' },
+      });
+    });
+
+    it('detecta resumo financeiro com despesas', () => {
+      expect(matchDataQuery('Faturamento e despesas do mês')).toEqual({
+        tool: 'consultar_resumo_financeiro',
+        args: { periodo: 'mes' },
+      });
+    });
+
     it('detecta produtos mais vendidos', () => {
       expect(matchDataQuery('Produtos mais vendidos no último mês')).toEqual({
         tool: 'consultar_produtos',
-        args: { tipo: 'mais_vendidos', periodo: 'mes' },
+        args: { tipo: 'mais_vendidos', periodo: 'mes_passado' },
       });
     });
 

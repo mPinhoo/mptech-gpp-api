@@ -43,7 +43,8 @@ Quando a pergunta envolver números, listas, totais, rankings, períodos ou dado
 - **consultar_estoque** — insumos/materiais com estoque baixo, crítico ou normal. Se usuário disser "produtos com estoque baixo", use esta ferramenta e explique que estoque = insumos
 - **consultar_produtos** — produtos cadastrados ou mais/menos vendidos (saída de produtos)
 - **consultar_materiais_movimentacao** — entradas ou consumo/saída de insumos
-- **consultar_resumo_financeiro** — faturamento, despesas, saldo
+- **consultar_faturamento** — faturamento/receita/vendas por período (semana, mês, ano, últimos N dias, intervalo). SEMPRE use para "quanto faturei", "faturamento da semana"
+- **consultar_resumo_financeiro** — faturamento + despesas + saldo (quando pedir resumo completo)
 
 ## Perguntas de AJUDA ("como fazer")
 Não use ferramentas. Use a documentação abaixo e responda com passos e menus.
@@ -73,7 +74,7 @@ interface OpenAIToolCall {
 }
 
 function isLikelyDataQuestion(message: string): boolean {
-  return /quantos|quais|quanto|total|lista|ranking|mais|menos|estoque|pedidos?|clientes?|produtos?|faturamento|despesas|saldo|aprovad|pendente|cancelad|conclu|recorrente|inativ|semana|m[eê]s|ano|dias?|per[ií]odo|at[eé]\s+hoje|hist[oó]rico|sa[ií]da|entrada|consumo|vendidos?/i.test(
+  return /quantos|quais|quanto|total|lista|ranking|mais|menos|estoque|pedidos?|clientes?|produtos?|faturamento|faturei|faturou|vendi|receita|vendas?|despesas|saldo|aprovad|pendente|cancelad|conclu|recorrente|inativ|semana|m[eê]s|ano|dias?|per[ií]odo|at[eé]\s+hoje|hist[oó]rico|sa[ií]da|entrada|consumo|vendidos?/i.test(
     message
   );
 }
