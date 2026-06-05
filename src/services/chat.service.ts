@@ -1,6 +1,7 @@
 import { AppError } from '../utils/errors.js';
 import { loadWikiDocuments } from './wiki/wiki-loader.js';
 import { formatDocumentsForPrompt, searchWiki } from './wiki/wiki-search.js';
+import { buildUserFriendlyExcerpt } from './wiki/wiki-simplify.js';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -13,15 +14,30 @@ export interface ChatResponse {
   mode: 'ai' | 'search';
 }
 
-const SYSTEM_PROMPT = `Você é o assistente de ajuda do sistema Zentra (GPP — Gestão de Pedidos e Produtos) da MPTech.
+const SYSTEM_PROMPT = `Você é a assistente virtual do Zentra — sistema de gestão para negócios de personalização (brindes, festas, produtos customizados).
 
-Regras:
-- Responda SOMENTE com base na documentação fornecida abaixo.
-- Se a informação não estiver na documentação, diga claramente que não encontrou essa informação na base de conhecimento.
-- Responda sempre em português brasileiro, de forma clara, objetiva e amigável.
-- Use passos numerados quando explicar procedimentos.
-- Não invente funcionalidades, endpoints ou regras que não estejam na documentação.
-- Se a pergunta for sobre permissões, explique qual menu/ação é necessária quando relevante.`;
+## Público
+Usuários finais do sistema: donos de negócio, vendedores, produção e administradores. Eles NÃO são desenvolvedores.
+
+## Sua missão
+Transformar a documentação técnica fornecida em respostas simples e práticas. A documentação é técnica de propósito — você deve TRADUZIR tudo para linguagem do dia a dia.
+
+## Como responder
+- Fale de forma calorosa e direta, como um colega experiente.
+- Indique ONDE clicar: menus da barra lateral (Pedidos, Produtos, Estoque, Área de Trabalho, Agenda, Clientes, Precificação, Início).
+- Use passos numerados em procedimentos ("1. Clique em Pedidos... 2. Depois em Novo Pedido...").
+- Traduza termos: Kanban → Área de Trabalho; PENDENTE → aguardando aprovação; APROVADO → aprovado; BOM → lista de materiais.
+- Seja breve: 3 a 6 frases ou um passo a passo curto.
+
+## O que NUNCA incluir na resposta
+- Endpoints, APIs, rotas técnicas (/api/...), código, banco de dados, JWT, tokens, nomes de arquivos, variáveis de ambiente, arquitetura de software.
+- Não copie trechos técnicos da documentação — sempre reescreva para o usuário.
+
+## Permissões
+Se algo exigir acesso especial: "Para isso você precisa de permissão em [menu]. Peça ao administrador da sua conta."
+
+## Quando não souber
+Diga: "Não encontrei isso no manual. Tente perguntar o que você quer fazer — por exemplo: criar um pedido, cadastrar produto ou ver o estoque."`;
 
 async function callOpenAI(
   context: string,
@@ -38,7 +54,7 @@ async function callOpenAI(
   const messages = [
     {
       role: 'system' as const,
-      content: `${SYSTEM_PROMPT}\n\n## Documentação relevante\n\n${context}`,
+      content: `${SYSTEM_PROMPT}\n\n## Documentação de referência (técnica — traduza para o usuário)\n\n${context}`,
     },
     ...history.slice(-6).map((msg) => ({
       role: msg.role,
@@ -56,8 +72,8 @@ async function callOpenAI(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.3,
-      max_tokens: 800,
+      temperature: 0.5,
+      max_tokens: 650,
     }),
   });
 
@@ -81,12 +97,26 @@ async function callOpenAI(
   return reply;
 }
 
-function buildSearchFallback(question: string, context: string, sources: { title: string; category: string }[]): string {
-  if (sources.length === 0) {
-    return 'Não encontrei informações sobre isso na documentação do sistema. Tente reformular sua pergunta ou pergunte sobre pedidos, produtos, estoque, kanban, agenda ou permissões.';
+function buildSearchFallback(
+  sources: { title: string }[],
+  documents: { content: string }[]
+): string {
+  if (sources.length === 0 || documents.length === 0) {
+    return 'Não encontrei isso no manual do sistema. Tente perguntar de outro jeito — por exemplo: "Como faço um novo pedido?" ou "Onde vejo a produção?"';
   }
 
-  return `Encontrei estas informações na documentação que podem ajudar:\n\n${context.slice(0, 2500)}\n\n---\n\nSe precisar de mais detalhes, pergunte de forma mais específica sobre: ${sources.map((s) => s.title).join(', ')}.`;
+  const main = buildUserFriendlyExcerpt(documents[0].content);
+
+  if (sources.length === 1) {
+    return `${main}\n\nSe precisar de mais detalhes, me diga o que você quer fazer que eu te ajudo!`;
+  }
+
+  const others = sources
+    .slice(1, 3)
+    .map((s) => s.title.toLowerCase())
+    .join(' ou ');
+
+  return `${main}\n\nPosso ajudar também com ${others}. É só perguntar!`;
 }
 
 export class ChatService {
@@ -102,14 +132,17 @@ export class ChatService {
         return { reply, sources, mode: 'ai' };
       } catch (err) {
         if (err instanceof AppError && err.code === 'AI_UNAVAILABLE') {
-          // fall through to search
+          // fall through
         } else if (err instanceof AppError) {
           throw err;
         }
       }
     }
 
-    const reply = buildSearchFallback(message, context, sources);
+    const reply = buildSearchFallback(
+      sources,
+      relevant.map((doc) => ({ content: doc.content }))
+    );
     return { reply, sources, mode: 'search' };
   }
 
