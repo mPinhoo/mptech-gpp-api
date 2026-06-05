@@ -45,9 +45,11 @@ A wiki **não é simplificada**. O chat usa `wiki-simplify.ts` para filtrar/trad
 
 - Disponível para **qualquer usuário autenticado**
 - Respostas em linguagem de usuário — sem endpoints, código ou jargão técnico
-- Com `OPENAI_API_KEY`: IA traduz documentação técnica em respostas amigáveis
-- Sem chave de IA: extrai "onde fazer" + "como funciona" das páginas de funcionalidade
-- Não responde sobre dados específicos do tenant (pedidos, clientes do usuário)
+- **Consultas ao sistema**: estoque baixo, pedidos por período, clientes recorrentes/inativos, resumo financeiro
+- Consultas respeitam **permissões RBAC** do usuário (estoque, pedidos, clientes, home)
+- Com `OPENAI_API_KEY`: IA consulta dados via ferramentas e responde perguntas em geral
+- Sem chave de IA: consultas por palavras-chave + guias passo a passo da wiki
+- Perguntas de "como fazer" continuam usando documentação/guia
 
 ## Regras técnicas
 

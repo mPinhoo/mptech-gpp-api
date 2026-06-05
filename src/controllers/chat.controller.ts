@@ -6,7 +6,10 @@ export class ChatController {
   async ask(req: Request, res: Response, next: NextFunction) {
     try {
       const { message, history } = req.body as ChatRequestInput;
-      const result = await chatService.ask(message, history);
+      const userCtx = req.user
+        ? { userId: req.user.userId, email: req.user.email }
+        : undefined;
+      const result = await chatService.ask(message, history, userCtx);
       res.json({ success: true, data: result });
     } catch (err) {
       next(err);
