@@ -1,7 +1,7 @@
 import { AppError } from '../utils/errors.js';
 import { loadWikiDocuments } from './wiki/wiki-loader.js';
 import { formatDocumentsForPrompt, searchWiki } from './wiki/wiki-search.js';
-import { buildUserFriendlyExcerpt } from './wiki/wiki-simplify.js';
+import { formatUserGuideReply, matchUserGuide } from './wiki/wiki-user-guides.js';
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
@@ -11,38 +11,49 @@ export interface ChatMessage {
 export interface ChatResponse {
   reply: string;
   sources: { title: string; category: string }[];
-  mode: 'ai' | 'search';
+  mode: 'ai' | 'guide' | 'search';
 }
 
-const SYSTEM_PROMPT = `Você é a assistente virtual do Zentra — sistema de gestão para negócios de personalização (brindes, festas, produtos customizados).
+const SYSTEM_PROMPT = `Você é a assistente virtual do Zentra — sistema de gestão para negócios de personalização.
 
 ## Público
-Usuários finais do sistema: donos de negócio, vendedores, produção e administradores. Eles NÃO são desenvolvedores.
+Usuários finais (NÃO desenvolvedores).
 
-## Sua missão
-Transformar a documentação técnica fornecida em respostas simples e práticas. A documentação é técnica de propósito — você deve TRADUZIR tudo para linguagem do dia a dia.
+## Formato OBRIGATÓRIO da resposta
+Sempre use este formato para procedimentos:
 
-## Como responder
-- Fale de forma calorosa e direta, como um colega experiente.
-- Indique ONDE clicar: menus da barra lateral (Pedidos, Produtos, Estoque, Área de Trabalho, Agenda, Clientes, Precificação, Início).
-- Use passos numerados em procedimentos ("1. Clique em Pedidos... 2. Depois em Novo Pedido...").
-- Traduza termos: Kanban → Área de Trabalho; PENDENTE → aguardando aprovação; APROVADO → aprovado; BOM → lista de materiais.
-- Seja breve: 3 a 6 frases ou um passo a passo curto.
+[Título curto]:
 
-## O que NUNCA incluir na resposta
-- Endpoints, APIs, rotas técnicas (/api/...), código, banco de dados, JWT, tokens, nomes de arquivos, variáveis de ambiente, arquitetura de software.
-- Não copie trechos técnicos da documentação — sempre reescreva para o usuário.
+**Menu A → Menu B → Ação → Ação → Ação**
 
-## Permissões
-Se algo exigir acesso especial: "Para isso você precisa de permissão em [menu]. Peça ao administrador da sua conta."
+1. Passo claro com **negrito** nos botões/menus
+2. Próximo passo
+3. ...
 
-## Quando não souber
-Diga: "Não encontrei isso no manual. Tente perguntar o que você quer fazer — por exemplo: criar um pedido, cadastrar produto ou ver o estoque."`;
+## Exemplo perfeito
+Pergunta: "Como crio um pedido?"
+Resposta:
+"Para criar um pedido:
+
+**Pedidos → Novo Pedido → Selecionar cliente e produtos → Salvar → Enviar para o cliente**
+
+1. No menu lateral, clique em **Pedidos**
+2. Clique em **Novo Pedido**
+3. Escolha o cliente e adicione os produtos
+4. Clique em **Salvar**
+5. Para o cliente aprovar, clique em **Enviar para o Cliente**"
+
+## Regras
+- NUNCA use tabelas markdown, rotas (/pedidos), APIs, código ou termos técnicos
+- Traduza: Kanban → Área de Trabalho; PENDENTE → aguardando aprovação
+- Máximo 5-7 passos
+- Tom amigável e direto`;
 
 async function callOpenAI(
   context: string,
   history: ChatMessage[],
-  question: string
+  question: string,
+  guideHint?: string
 ): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -51,10 +62,14 @@ async function callOpenAI(
 
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
+  const guideSection = guideHint
+    ? `\n\n## Guia sugerido (use como base, pode melhorar a redação)\n${guideHint}`
+    : '';
+
   const messages = [
     {
       role: 'system' as const,
-      content: `${SYSTEM_PROMPT}\n\n## Documentação de referência (técnica — traduza para o usuário)\n\n${context}`,
+      content: `${SYSTEM_PROMPT}${guideSection}\n\n## Documentação de referência\n${context}`,
     },
     ...history.slice(-6).map((msg) => ({
       role: msg.role,
@@ -72,8 +87,8 @@ async function callOpenAI(
     body: JSON.stringify({
       model,
       messages,
-      temperature: 0.5,
-      max_tokens: 650,
+      temperature: 0.4,
+      max_tokens: 500,
     }),
   });
 
@@ -97,38 +112,38 @@ async function callOpenAI(
   return reply;
 }
 
-function buildSearchFallback(
-  sources: { title: string }[],
-  documents: { content: string }[]
-): string {
-  if (sources.length === 0 || documents.length === 0) {
-    return 'Não encontrei isso no manual do sistema. Tente perguntar de outro jeito — por exemplo: "Como faço um novo pedido?" ou "Onde vejo a produção?"';
+function buildGenericFallback(sources: { title: string }[]): string {
+  if (sources.length === 0) {
+    return 'Não encontrei isso no manual. Tente perguntar de forma direta, por exemplo:\n\n• "Como crio um pedido?"\n• "Como acompanho a produção?"\n• "Como cadastro um produto?"';
   }
 
-  const main = buildUserFriendlyExcerpt(documents[0].content);
-
-  if (sources.length === 1) {
-    return `${main}\n\nSe precisar de mais detalhes, me diga o que você quer fazer que eu te ajudo!`;
-  }
-
-  const others = sources
-    .slice(1, 3)
-    .map((s) => s.title.toLowerCase())
-    .join(' ou ');
-
-  return `${main}\n\nPosso ajudar também com ${others}. É só perguntar!`;
+  const topic = sources[0].title;
+  return `Sobre **${topic}**, posso te guiar passo a passo. Me diga o que você quer fazer — por exemplo: criar, enviar, editar ou acompanhar.`;
 }
 
 export class ChatService {
   async ask(message: string, history: ChatMessage[] = []): Promise<ChatResponse> {
+    const guide = matchUserGuide(message);
+    const guideReply = guide ? formatUserGuideReply(guide) : null;
+    const guideSources = guide
+      ? [{ title: guide.title, category: 'guide' }]
+      : [];
+
+    // Guias curados: resposta direta e clara (com ou sem IA)
+    if (guideReply && !process.env.OPENAI_API_KEY) {
+      return { reply: guideReply, sources: guideSources, mode: 'guide' };
+    }
+
     const documents = loadWikiDocuments();
     const relevant = searchWiki(documents, message);
     const context = formatDocumentsForPrompt(relevant);
-    const sources = relevant.map((doc) => ({ title: doc.title, category: doc.category }));
+    const sources = guideSources.length
+      ? guideSources
+      : relevant.map((doc) => ({ title: doc.title, category: doc.category }));
 
     if (process.env.OPENAI_API_KEY) {
       try {
-        const reply = await callOpenAI(context, history, message);
+        const reply = await callOpenAI(context, history, message, guideReply ?? undefined);
         return { reply, sources, mode: 'ai' };
       } catch (err) {
         if (err instanceof AppError && err.code === 'AI_UNAVAILABLE') {
@@ -139,10 +154,11 @@ export class ChatService {
       }
     }
 
-    const reply = buildSearchFallback(
-      sources,
-      relevant.map((doc) => ({ content: doc.content }))
-    );
+    if (guideReply) {
+      return { reply: guideReply, sources: guideSources, mode: 'guide' };
+    }
+
+    const reply = buildGenericFallback(sources);
     return { reply, sources, mode: 'search' };
   }
 
