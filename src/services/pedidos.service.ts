@@ -5,6 +5,7 @@ import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreatePedidoInput, UpdatePedidoInput } from '../schemas/pedido.schema.js';
 import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
 import { findClienteIdsBySimilarName } from '../utils/similarity.js';
+import { parseDateOnlyInput } from '../utils/datetime-br.js';
 
 function formatDate(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -226,8 +227,8 @@ export class PedidosService {
         userId,
         numero,
         clienteId: data.clienteId,
-        dataPedido: new Date(data.dataPedido),
-        prazoEntrega: new Date(data.prazoEntrega),
+        dataPedido: parseDateOnlyInput(data.dataPedido),
+        prazoEntrega: parseDateOnlyInput(data.prazoEntrega),
         valorTotal: new Decimal(valorTotal),
         itens: { create: itensComPreco },
         extras: {
@@ -262,8 +263,8 @@ export class PedidosService {
       if (!cliente) throw new NotFoundError('Cliente');
       updateData.clienteId = data.clienteId;
     }
-    if (data.dataPedido) updateData.dataPedido = new Date(data.dataPedido);
-    if (data.prazoEntrega) updateData.prazoEntrega = new Date(data.prazoEntrega);
+    if (data.dataPedido) updateData.dataPedido = parseDateOnlyInput(data.dataPedido);
+    if (data.prazoEntrega) updateData.prazoEntrega = parseDateOnlyInput(data.prazoEntrega);
 
     await prisma.$transaction(async (tx) => {
       if (data.itens) {

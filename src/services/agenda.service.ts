@@ -3,7 +3,7 @@ import { AppError, NotFoundError } from '../utils/errors.js';
 import { CreateLembreteInput, UpdateLembreteInput } from '../schemas/agenda.schema.js';
 import {
   combineDateTimeBR,
-  extractDateBR,
+  extractDateOnlyField,
   extractTimeBR,
 } from '../utils/datetime-br.js';
 
@@ -174,7 +174,7 @@ export class AgendaService {
       id: pedido.id,
       numero: pedido.numero,
       cliente: pedido.cliente.nome,
-      prazoEntrega: extractDateBR(pedido.prazoEntrega),
+      prazoEntrega: extractDateOnlyField(pedido.prazoEntrega),
       status: statusMap[pedido.status] || pedido.status,
       valor: Number(pedido.valorTotal).toLocaleString('pt-BR', {
         style: 'currency',

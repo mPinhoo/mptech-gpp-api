@@ -34,6 +34,26 @@ export function startOfDayBR(date: Date = new Date()): Date {
   return combineDateTimeBR(`${year}-${month}-${day}`, '00:00');
 }
 
+export function parseDateOnlyInput(value: string): Date {
+  const datePart = value.includes('T') ? value.split('T')[0] : value;
+  return new Date(`${datePart}T12:00:00.000Z`);
+}
+
+/** Extrai YYYY-MM-DD de campos somente-data (ex.: prazo de entrega). */
+export function extractDateOnlyField(date: Date): string {
+  const isUtcMidnight =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+
+  if (isUtcMidnight) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  return extractDateBR(date);
+}
+
 export function extractDateBR(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: APP_TIMEZONE,
