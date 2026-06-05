@@ -250,11 +250,17 @@ export class PedidosService {
       throw new NotFoundError('Pedido');
     }
 
-    if (existing.status !== 'PENDENTE') {
-      throw new AppError('Apenas pedidos pendentes podem ser editados', 400, 'INVALID_STATUS');
+    const editableStatuses = ['PENDENTE', 'APROVADO'] as const;
+    if (!editableStatuses.includes(existing.status as (typeof editableStatuses)[number])) {
+      throw new AppError('Este pedido não pode ser editado', 400, 'INVALID_STATUS');
     }
 
     const updateData: Record<string, unknown> = {};
+
+    if (existing.status === 'APROVADO') {
+      updateData.status = 'PENDENTE';
+      updateData.kanbanColunaId = null;
+    }
     if (data.numero) updateData.numero = data.numero;
     if (data.clienteId) {
       const cliente = await prisma.cliente.findFirst({

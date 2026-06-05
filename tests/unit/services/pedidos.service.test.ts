@@ -167,6 +167,69 @@ describe('PedidosService', () => {
     });
   });
 
+  describe('update', () => {
+    const pedidoBase = {
+      id: 'pedido-1',
+      userId: USER_ID,
+      numero: 'PED-0001',
+      status: 'APROVADO',
+      linkToken: 'token-123',
+      enviadoCliente: true,
+      dataPedido: new Date(),
+      prazoEntrega: new Date(),
+      valorTotal: { toString: () => '100' },
+      itens: [{ subtotal: { toString: () => '100' } }],
+      extras: [],
+      cliente: { id: 'c1', nome: 'Cliente' },
+    };
+
+    it('deve voltar para PENDENTE e manter linkToken ao editar pedido aprovado', async () => {
+      mockPrisma.pedido.findFirst
+        .mockResolvedValueOnce({ ...pedidoBase, itens: [], extras: [] })
+        .mockResolvedValueOnce({
+          ...pedidoBase,
+          status: 'PENDENTE',
+          linkToken: 'token-123',
+          itens: [],
+          extras: [],
+        });
+      mockPrisma.pedido.update.mockResolvedValue({});
+      mockPrisma.produto.findMany.mockResolvedValue([
+        { id: 'p1', preco: { toString: () => '100' } },
+      ]);
+
+      await service.update(USER_ID, 'pedido-1', {
+        itens: [{ produtoId: 'p1', quantidade: 1 }],
+        extras: [],
+      });
+
+      expect(mockPrisma.pedido.update).toHaveBeenCalledWith({
+        where: { id: 'pedido-1' },
+        data: expect.objectContaining({
+          status: 'PENDENTE',
+          kanbanColunaId: null,
+        }),
+      });
+      const updateCall = mockPrisma.pedido.update.mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty('linkToken');
+    });
+
+    it('deve rejeitar edição de pedido concluído', async () => {
+      mockPrisma.pedido.findFirst.mockResolvedValue({
+        ...pedidoBase,
+        status: 'CONCLUIDO',
+        itens: [],
+        extras: [],
+      });
+
+      await expect(
+        service.update(USER_ID, 'pedido-1', {
+          dataPedido: '2026-06-01',
+        })
+      ).rejects.toThrow(AppError);
+    });
+  });
+
   describe('updateStatus', () => {
     it('deve lançar NotFoundError se pedido não existe', async () => {
       mockPrisma.pedido.findFirst.mockResolvedValue(null);
