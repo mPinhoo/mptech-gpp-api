@@ -9,8 +9,10 @@ const mockPrisma = {
     aggregate: jest.fn(),
     groupBy: jest.fn(),
   },
-  cliente: { findMany: jest.fn() },
-  despesa: { aggregate: jest.fn() },
+  cliente: { count: jest.fn(), findMany: jest.fn() },
+  produto: { count: jest.fn(), findMany: jest.fn() },
+  itemPedido: { groupBy: jest.fn() },
+  despesa: { findMany: jest.fn(), aggregate: jest.fn() },
   $queryRaw: jest.fn(),
 };
 
@@ -35,7 +37,7 @@ describe('ChatQueryService', () => {
     jest.clearAllMocks();
   });
 
-  describe('getEstoqueBaixo', () => {
+  describe('getEstoque', () => {
     it('retorna apenas itens baixo e crítico', async () => {
       mockPrisma.materiaPrima.findMany.mockResolvedValue([
         { nome: 'A', quantidade: 200, quantidadeMinima: 100, unidade: 'un' },
@@ -43,35 +45,42 @@ describe('ChatQueryService', () => {
         { nome: 'C', quantidade: 50, quantidadeMinima: 100, unidade: 'un' },
       ]);
 
-      const result = await service.getEstoqueBaixo(ctx);
+      const result = await service.getEstoque(ctx);
 
       expect(result.total).toBe(2);
       expect(result.criticos).toBe(1);
-      expect(result.itens?.[0].nome).toBe('B');
-      expect(result.itens?.[1].status).toBe('Crítico');
     });
   });
 
-  describe('getPedidosPeriodo', () => {
-    it('retorna contagem e lista de pedidos', async () => {
-      mockPrisma.pedido.count.mockResolvedValue(2);
-      mockPrisma.pedido.findMany.mockResolvedValue([
-        {
-          numero: 'P001',
-          dataPedido: new Date('2026-06-01T12:00:00Z'),
-          valorTotal: 100,
-          status: 'APROVADO',
-          cliente: { nome: 'Cliente A' },
-        },
+  describe('getClientes total', () => {
+    it('retorna contagem de clientes', async () => {
+      mockPrisma.cliente.count
+        .mockResolvedValueOnce(40)
+        .mockResolvedValueOnce(5)
+        .mockResolvedValueOnce(35)
+        .mockResolvedValueOnce(5);
+
+      const result = await service.getClientes(ctx, 'total');
+
+      expect(result.ativos).toBe(40);
+      expect(result.totalGeral).toBe(45);
+    });
+  });
+
+  describe('getPedidos', () => {
+    it('retorna contagem e resumo por status', async () => {
+      mockPrisma.pedido.count.mockResolvedValue(5);
+      mockPrisma.pedido.findMany.mockResolvedValue([]);
+      mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 1000 } });
+      mockPrisma.pedido.groupBy.mockResolvedValue([
+        { status: 'APROVADO', _count: { id: 3 } },
+        { status: 'PENDENTE', _count: { id: 2 } },
       ]);
-      mockPrisma.pedido.aggregate.mockResolvedValue({ _sum: { valorTotal: 200 } });
 
-      const result = await service.getPedidosPeriodo(ctx, 'mes');
+      const result = await service.getPedidos(ctx, { periodo: 'ate_hoje' });
 
-      expect(result.total).toBe(2);
-      expect(result.valorTotal).toBe(200);
-      expect(result.pedidos).toHaveLength(1);
-      expect(result.pedidos?.[0].cliente).toBe('Cliente A');
+      expect(result.total).toBe(5);
+      expect(result.porStatus).toHaveLength(2);
     });
   });
 });

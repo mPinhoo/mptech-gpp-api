@@ -45,10 +45,14 @@ A wiki **não é simplificada**. O chat usa `wiki-simplify.ts` para filtrar/trad
 
 - Disponível para **qualquer usuário autenticado**
 - Respostas em linguagem de usuário — sem endpoints, código ou jargão técnico
-- **Consultas ao sistema**: estoque baixo, pedidos por período, clientes recorrentes/inativos, resumo financeiro
-- Consultas respeitam **permissões RBAC** do usuário (estoque, pedidos, clientes, home)
-- Com `OPENAI_API_KEY`: IA consulta dados via ferramentas e responde perguntas em geral
-- Sem chave de IA: consultas por palavras-chave + guias passo a passo da wiki
+- **Consultas ao sistema** com períodos flexíveis: hoje, semana, mês, mês passado, ano, últimos N dias, até hoje, intervalo personalizado
+- Pedidos por status (pendente, aprovado, concluído, cancelado) com resumo
+- Total de clientes, recorrentes e inativos
+- Estoque de insumos (baixo, crítico, normal)
+- Produtos mais/menos vendidos; entradas e consumo de materiais
+- Consultas respeitam **permissões RBAC** (estoque, pedidos, clientes, produtos, home)
+- Com `OPENAI_API_KEY`: IA interpreta perguntas livres e chama ferramentas automaticamente
+- Sem chave de IA: consultas por palavras-chave + guias da wiki
 - Perguntas de "como fazer" continuam usando documentação/guia
 
 ## Regras técnicas

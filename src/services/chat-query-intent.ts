@@ -6,96 +6,100 @@ interface DataQueryMatch {
   args: Record<string, unknown>;
 }
 
-const ESTOQUE_PATTERNS = [
-  /estoque\s+baixo/i,
-  /estoque\s+cr[ií]tico/i,
-  /materiais?\s+baixo/i,
-  /insumos?\s+baixo/i,
-  /acabando\s+o\s+estoque/i,
-  /falta\s+de\s+estoque/i,
-  /quais\s+.*estoque/i,
-];
-
-const PEDIDOS_HOJE = [
-  /pedidos?.*hoje/i,
-  /hoje.*pedidos?/i,
-  /pedidos?\s+do\s+dia/i,
-  /quantos\s+pedidos?.*hoje/i,
-];
-const PEDIDOS_SEMANA = [
-  /pedidos?.*(semana|7\s*dias)/i,
-  /quantos\s+pedidos?.*semana/i,
-  /[uú]ltima\s+semana/i,
-];
-const PEDIDOS_MES = [
-  /pedidos?.*(m[eê]s)/i,
-  /quantos\s+pedidos?.*m[eê]s/i,
-  /[uú]ltimo\s+m[eê]s/i,
-  /neste\s+m[eê]s/i,
-];
-
-const CLIENTES_RECORRENTES = [
-  /clientes?.*recorrentes?/i,
-  /clientes?.*frequentes?/i,
-  /clientes?.*mais\s+pedem/i,
-  /mais\s+pedidos?.*cliente/i,
-  /top\s+clientes?/i,
-];
-
-const CLIENTES_INATIVOS = [
-  /clientes?\s+inativos?/i,
-  /clientes?\s+que\s+n[aã]o\s+pedem/i,
-  /sem\s+pedir\s+h[aá]/i,
-  /n[aã]o\s+pedem\s+h[aá]/i,
-  /clientes?\s+parados?/i,
-];
-
-const RESUMO_FINANCEIRO = [
-  /faturamento/i,
-  /quanto\s+faturei/i,
-  /resumo\s+financeiro/i,
-  /quanto\s+vendi/i,
-  /despesas?\s+do\s+m[eê]s/i,
-];
-
 function matchesAny(text: string, patterns: RegExp[]): boolean {
   return patterns.some((p) => p.test(text));
 }
 
-function extractDias(text: string): number {
+function extractDias(text: string): number | undefined {
   const match = text.match(/(\d+)\s*dias?/i);
-  return match ? parseInt(match[1], 10) : 30;
+  return match ? parseInt(match[1], 10) : undefined;
+}
+
+function extractPeriodo(text: string): Record<string, unknown> {
+  const dias = extractDias(text);
+  if (dias) return { periodo: 'ultimos_n_dias', dias };
+  if (/at[eé]\s+hoje|todo\s+hist|desde\s+sempre/i.test(text)) return { periodo: 'ate_hoje' };
+  if (/m[eê]s\s+passado/i.test(text)) return { periodo: 'mes_passado' };
+  if (/[uú]ltimo\s+ano|365/i.test(text)) return { periodo: 'ano' };
+  if (/semana|7\s*dias/i.test(text)) return { periodo: 'semana' };
+  if (/hoje|do\s+dia/i.test(text)) return { periodo: 'hoje' };
+  if (/m[eê]s/i.test(text)) return { periodo: 'mes' };
+  return { periodo: 'mes' };
+}
+
+function extractStatus(text: string): string | undefined {
+  if (/aprovad/i.test(text)) return 'APROVADO';
+  if (/pendente/i.test(text)) return 'PENDENTE';
+  if (/cancelad/i.test(text)) return 'CANCELADO';
+  if (/conclu/i.test(text)) return 'CONCLUIDO';
+  return undefined;
+}
+
+function isHelpQuestion(text: string): boolean {
+  return /como\s+(fa[cç]o|crio|cadastro|envio|uso|funciona)|passo\s+a\s+passo|onde\s+(fica|encontro|clico)/i.test(
+    text
+  );
 }
 
 export function matchDataQuery(message: string): DataQueryMatch | null {
   const text = message.toLowerCase();
 
-  if (matchesAny(text, ESTOQUE_PATTERNS)) {
-    return { tool: 'consultar_estoque_baixo', args: {} };
+  if (isHelpQuestion(text)) return null;
+
+  if (/quantos\s+clientes|total\s+de\s+clientes|clientes\s+na\s+base|clientes\s+cadastrados/i.test(text)) {
+    return { tool: 'consultar_clientes', args: { tipo: 'total' } };
   }
 
-  if (matchesAny(text, PEDIDOS_HOJE)) {
-    return { tool: 'consultar_pedidos', args: { periodo: 'hoje' } };
+  if (/estoque|insumos?|materiais?/i.test(text) && /baixo|cr[ií]tico|acabando|falta/i.test(text)) {
+    const filtro = /cr[ií]tico/i.test(text) ? 'critico' : 'baixo_ou_critico';
+    return { tool: 'consultar_estoque', args: { filtro } };
   }
 
-  if (matchesAny(text, PEDIDOS_SEMANA)) {
-    return { tool: 'consultar_pedidos', args: { periodo: 'semana' } };
+  if (/produtos?.*(mais|menos)\s+vendid|mais\s+vendid|menos\s+vendid/i.test(text)) {
+    const tipo = /menos/i.test(text) ? 'menos_vendidos' : 'mais_vendidos';
+    return { tool: 'consultar_produtos', args: { tipo, ...extractPeriodo(text) } };
   }
 
-  if (matchesAny(text, PEDIDOS_MES)) {
-    return { tool: 'consultar_pedidos', args: { periodo: 'mes' } };
+  if (/entradas?\s+(de\s+)?estoque|mais\s+entrada/i.test(text)) {
+    return {
+      tool: 'consultar_materiais_movimentacao',
+      args: { tipo: 'entradas', ordenar: /menos/i.test(text) ? 'menos' : 'mais', ...extractPeriodo(text) },
+    };
   }
 
-  if (matchesAny(text, CLIENTES_RECORRENTES)) {
-    return { tool: 'consultar_clientes_recorrentes', args: { limite: 10 } };
+  if (/sa[ií]da|consumo/i.test(text) && /estoque|insumos?|materiais?/i.test(text)) {
+    return {
+      tool: 'consultar_materiais_movimentacao',
+      args: { tipo: 'consumo', ordenar: /menos/i.test(text) ? 'menos' : 'mais', ...extractPeriodo(text) },
+    };
   }
 
-  if (matchesAny(text, CLIENTES_INATIVOS)) {
-    return { tool: 'consultar_clientes_inativos', args: { dias_sem_pedir: extractDias(text) } };
+  if (
+    /pedidos?/i.test(text) &&
+    /quantos|quais|total|aprovad|pendente|cancelad|conclu|valor|fiz|tive|lista|[uú]ltimos?|semana|m[eê]s|hoje|ano|dias?/i.test(
+      text
+    )
+  ) {
+    const status = extractStatus(text);
+    return {
+      tool: 'consultar_pedidos',
+      args: { ...extractPeriodo(text), status, incluir_resumo_status: !status },
+    };
   }
 
-  if (matchesAny(text, RESUMO_FINANCEIRO)) {
-    return { tool: 'consultar_resumo_financeiro', args: { periodo: 'mes' } };
+  if (/clientes?.*recorrentes?|clientes?.*frequentes?|clientes?.*mais\s+pedem|top\s+clientes?/i.test(text)) {
+    return { tool: 'consultar_clientes', args: { tipo: 'recorrentes', limite: 10 } };
+  }
+
+  if (/clientes?.*inativos?|n[aã]o\s+pedem|sem\s+pedir/i.test(text)) {
+    return {
+      tool: 'consultar_clientes',
+      args: { tipo: 'inativos', dias_sem_pedir: extractDias(text) ?? 30 },
+    };
+  }
+
+  if (/faturamento|quanto\s+faturei|resumo\s+financeiro|despesas?/i.test(text)) {
+    return { tool: 'consultar_resumo_financeiro', args: extractPeriodo(text) };
   }
 
   return null;
@@ -111,85 +115,79 @@ export function formatToolResult(tool: string, result: unknown): string {
   }
 
   const data = result as Record<string, unknown>;
-
-  if (data.error) {
-    return String(data.error);
-  }
+  if (data.error) return String(data.error);
 
   switch (tool) {
+    case 'consultar_estoque':
     case 'consultar_estoque_baixo': {
       const itens = (data.itens as Array<{ nome: string; quantidade: number; minimo: number; unidade: string; status: string }>) || [];
       if (itens.length === 0) {
-        return 'Boa notícia! Nenhum material está com estoque baixo ou crítico no momento.';
+        return 'Nenhum material encontrado com esse filtro de estoque.';
       }
       const linhas = itens.map(
-        (i) =>
-          `• **${i.nome}** — ${i.quantidade} ${i.unidade} (mín: ${i.minimo}) — *${i.status}*`
+        (i) => `• **${i.nome}** — ${i.quantidade} ${i.unidade} (mín: ${i.minimo}) — *${i.status}*`
       );
-      return `Encontrei **${data.total}** materiais com estoque baixo ou crítico:\n\n${linhas.join('\n')}\n\nAcesse **Estoque** no menu para repor.`;
+      return `**${data.total}** materiais (${data.criticos ?? 0} críticos, ${data.baixos ?? 0} baixos):\n\n${linhas.join('\n')}`;
     }
 
     case 'consultar_pedidos': {
       const pedidos = (data.pedidos as Array<{ numero: string; cliente: string; data: string; valor: string; status: string }>) || [];
+      const porStatus = (data.porStatus as Array<{ status: string; quantidade: number }>) || [];
       let reply = `**${data.total}** pedido(s) ${data.periodo}`;
-      if (data.valorTotal) {
-        reply += `, totalizando **${formatCurrency(data.valorTotal as number)}**`;
+      if (data.statusFiltro) reply += ` (${data.statusFiltro})`;
+      if (data.valorTotal) reply += ` — **${formatCurrency(data.valorTotal as number)}**`;
+      if (porStatus.length > 0) {
+        reply += `\n\nPor status:\n${porStatus.map((s) => `• ${s.status}: **${s.quantidade}**`).join('\n')}`;
       }
-      reply += '.';
       if (pedidos.length > 0) {
-        const linhas = pedidos.slice(0, 10).map(
-          (p) => `• **${p.numero}** — ${p.cliente} — ${p.data} — ${p.valor} (${p.status})`
-        );
-        reply += `\n\nÚltimos pedidos:\n${linhas.join('\n')}`;
-        if ((data.total as number) > 10) {
-          reply += `\n\n... e mais ${(data.total as number) - 10}. Veja todos em **Pedidos**.`;
-        }
+        reply += `\n\nÚltimos:\n${pedidos.slice(0, 8).map((p) => `• **${p.numero}** — ${p.cliente} — ${p.status}`).join('\n')}`;
       }
       return reply;
     }
 
-    case 'consultar_clientes_recorrentes': {
-      const clientes = (data.clientes as Array<{ nome: string; totalPedidos: number; valorTotal: number }>) || [];
-      if (clientes.length === 0) {
-        return 'Ainda não há pedidos suficientes para identificar clientes recorrentes.';
+    case 'consultar_clientes': {
+      if (data.tipo === 'total') {
+        return `**${data.ativos}** clientes ativos na base (${data.comPedido} já pediram, ${data.semPedido} nunca pediram). Total geral: **${data.totalGeral}**.`;
       }
-      const linhas = clientes.map(
-        (c, i) =>
-          `${i + 1}. **${c.nome}** — ${c.totalPedidos} pedido(s) — ${formatCurrency(c.valorTotal)}`
-      );
-      return `Clientes mais recorrentes (últimos ${data.periodoMeses} meses):\n\n${linhas.join('\n')}`;
-    }
-
-    case 'consultar_clientes_inativos': {
-      const semPedido = (data.clientesSemPedidoRecente as Array<{ nome: string; ultimoPedido: string; diasSemPedir: number }>) || [];
+      if (data.tipo === 'recorrentes') {
+        const clientes = (data.clientes as Array<{ nome: string; totalPedidos: number; valorTotal: number }>) || [];
+        if (!clientes.length) return 'Sem dados de clientes recorrentes.';
+        return clientes.map((c, i) => `${i + 1}. **${c.nome}** — ${c.totalPedidos} pedidos — ${formatCurrency(c.valorTotal)}`).join('\n');
+      }
+      const semPedido = (data.clientesSemPedidoRecente as Array<{ nome: string; diasSemPedir: number }>) || [];
       const nunca = (data.clientesNuncaPediram as Array<{ nome: string }>) || [];
       const parts: string[] = [];
-
-      if (semPedido.length > 0) {
-        const linhas = semPedido.map(
-          (c) => `• **${c.nome}** — último pedido em ${c.ultimoPedido} (${c.diasSemPedir} dias)`
-        );
-        parts.push(`Clientes sem pedir há mais de ${data.diasSemPedir} dias:\n${linhas.join('\n')}`);
-      }
-
-      if (nunca.length > 0) {
-        const linhas = nunca.map((c) => `• **${c.nome}**`);
-        parts.push(`Clientes que nunca pediram:\n${linhas.join('\n')}`);
-      }
-
-      if (parts.length === 0) {
-        return `Todos os clientes ativos pediram nos últimos ${data.diasSemPedir} dias.`;
-      }
-
-      return parts.join('\n\n');
+      if (semPedido.length) parts.push(semPedido.map((c) => `• **${c.nome}** (${c.diasSemPedir} dias)`).join('\n'));
+      if (nunca.length) parts.push(`Nunca pediram:\n${nunca.map((c) => `• **${c.nome}**`).join('\n')}`);
+      return parts.join('\n\n') || 'Nenhum cliente inativo encontrado.';
     }
 
-    case 'consultar_resumo_financeiro': {
-      return `Resumo ${data.periodo}:\n\n• **Pedidos:** ${data.totalPedidos}\n• **Faturamento:** ${formatCurrency(data.faturamento as number)}\n• **Despesas:** ${formatCurrency(data.despesas as number)}\n• **Saldo:** ${formatCurrency(data.saldo as number)}`;
+    case 'consultar_produtos': {
+      if (data.tipo === 'total') {
+        return `**${data.total}** produtos cadastrados (${data.ativos} ativos, ${data.inativos} inativos).`;
+      }
+      const produtos = (data.produtos as Array<{ nome: string; quantidadeVendida: number }>) || [];
+      if (!produtos.length) return `Nenhuma venda ${data.periodo}.`;
+      return produtos.map((p, i) => `${i + 1}. **${p.nome}** — ${p.quantidadeVendida} un.`).join('\n');
     }
+
+    case 'consultar_materiais_movimentacao': {
+      const materiais = (data.materiais as Array<{ nome: string; quantidade: number; unidade: string }>) || [];
+      if (!materiais.length) return `Sem movimentação ${data.periodo}.`;
+      return materiais.map((m, i) => `${i + 1}. **${m.nome}** — ${m.quantidade} ${m.unidade}`).join('\n');
+    }
+
+    case 'consultar_resumo_financeiro':
+      return `Resumo ${data.periodo}:\n• Pedidos: **${data.totalPedidos}**\n• Faturamento: **${formatCurrency(data.faturamento as number)}**\n• Despesas: **${formatCurrency(data.despesas as number)}**\n• Saldo: **${formatCurrency(data.saldo as number)}**`;
+
+    case 'consultar_clientes_recorrentes':
+      return formatToolResult('consultar_clientes', { ...data, tipo: 'recorrentes' });
+
+    case 'consultar_clientes_inativos':
+      return formatToolResult('consultar_clientes', { ...data, tipo: 'inativos' });
 
     default:
-      return 'Consulta realizada, mas não sei formatar o resultado.';
+      return JSON.stringify(data, null, 2);
   }
 }
 
@@ -199,7 +197,6 @@ export async function tryDirectDataQuery(
 ): Promise<string | null> {
   const match = matchDataQuery(message);
   if (!match) return null;
-
   const result = await executeChatTool(match.tool, match.args, ctx);
   return formatToolResult(match.tool, result);
 }

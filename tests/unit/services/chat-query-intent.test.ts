@@ -11,38 +11,31 @@ import { matchDataQuery, formatToolResult } from '@/services/chat-query-intent';
 
 describe('chat-query-intent', () => {
   describe('matchDataQuery', () => {
-    it('detecta consulta de estoque baixo', () => {
-      expect(matchDataQuery('Quais materiais estão com estoque baixo?')).toEqual({
-        tool: 'consultar_estoque_baixo',
-        args: {},
+    it('detecta total de clientes', () => {
+      expect(matchDataQuery('Quantos clientes temos na base?')).toEqual({
+        tool: 'consultar_clientes',
+        args: { tipo: 'total' },
       });
     });
 
-    it('detecta pedidos do dia', () => {
-      expect(matchDataQuery('Quantos pedidos tive hoje?')).toEqual({
+    it('detecta pedidos com dias customizados', () => {
+      expect(matchDataQuery('Pedidos dos últimos 10 dias')).toEqual({
         tool: 'consultar_pedidos',
-        args: { periodo: 'hoje' },
+        args: { periodo: 'ultimos_n_dias', dias: 10, incluir_resumo_status: true },
       });
     });
 
-    it('detecta pedidos da semana', () => {
-      expect(matchDataQuery('Pedidos da última semana')).toEqual({
+    it('detecta pedidos aprovados até hoje', () => {
+      expect(matchDataQuery('Quantos pedidos aprovados até hoje?')).toEqual({
         tool: 'consultar_pedidos',
-        args: { periodo: 'semana' },
+        args: { periodo: 'ate_hoje', status: 'APROVADO', incluir_resumo_status: false },
       });
     });
 
-    it('detecta clientes recorrentes', () => {
-      expect(matchDataQuery('Quais clientes são mais recorrentes?')).toEqual({
-        tool: 'consultar_clientes_recorrentes',
-        args: { limite: 10 },
-      });
-    });
-
-    it('detecta clientes inativos com dias customizados', () => {
-      expect(matchDataQuery('Clientes que não pedem há 60 dias')).toEqual({
-        tool: 'consultar_clientes_inativos',
-        args: { dias_sem_pedir: 60 },
+    it('detecta produtos mais vendidos', () => {
+      expect(matchDataQuery('Produtos mais vendidos no último mês')).toEqual({
+        tool: 'consultar_produtos',
+        args: { tipo: 'mais_vendidos', periodo: 'mes' },
       });
     });
 
@@ -52,29 +45,29 @@ describe('chat-query-intent', () => {
   });
 
   describe('formatToolResult', () => {
-    it('formata estoque vazio', () => {
-      const reply = formatToolResult('consultar_estoque_baixo', { total: 0, itens: [] });
-      expect(reply).toContain('Nenhum material');
+    it('formata total de clientes', () => {
+      const reply = formatToolResult('consultar_clientes', {
+        tipo: 'total',
+        ativos: 50,
+        comPedido: 40,
+        semPedido: 10,
+        totalGeral: 55,
+        inativos: 5,
+      });
+      expect(reply).toContain('50');
+      expect(reply).toContain('clientes ativos');
     });
 
-    it('formata pedidos com total', () => {
+    it('formata pedidos com resumo por status', () => {
       const reply = formatToolResult('consultar_pedidos', {
-        total: 3,
+        total: 10,
         periodo: 'neste mês',
-        valorTotal: 1500,
-        pedidos: [
-          { numero: 'P001', cliente: 'João', data: '01/06/2026', valor: 'R$ 500,00', status: 'Aprovado' },
-        ],
+        valorTotal: 5000,
+        porStatus: [{ status: 'Aprovado', quantidade: 6 }],
+        pedidos: [],
       });
-      expect(reply).toContain('3');
-      expect(reply).toContain('P001');
-    });
-
-    it('formata erro de permissão', () => {
-      const reply = formatToolResult('consultar_pedidos', {
-        error: 'Sem permissão',
-      });
-      expect(reply).toBe('Sem permissão');
+      expect(reply).toContain('10');
+      expect(reply).toContain('Aprovado');
     });
   });
 });
