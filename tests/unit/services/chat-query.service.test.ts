@@ -69,10 +69,11 @@ describe('ChatQueryService', () => {
 
   describe('getFaturamento', () => {
     it('retorna faturamento e detalhe por status', async () => {
-      mockPrisma.pedido.count.mockResolvedValue(10);
+      mockPrisma.pedido.count
+        .mockResolvedValueOnce(10)
+        .mockResolvedValueOnce(4);
       mockPrisma.pedido.aggregate.mockResolvedValue({
         _sum: { valorTotal: 5000 },
-        _count: { id: 4 },
       });
       mockPrisma.pedido.groupBy.mockResolvedValue([
         { status: 'APROVADO', _sum: { valorTotal: 3000 }, _count: { id: 2 } },

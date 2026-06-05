@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma.js';
+import type { StatusPedido } from '@prisma/client';
 import { userCan } from './permissions.service.js';
 import type { MenuKey } from '../constants/menus.js';
 import {
@@ -483,20 +484,22 @@ export class ChatQueryService {
 
     const range = resolveChatPeriodo(periodoInput);
     const dataPedidoFilter = periodoToDateFilter(range);
+    const faturamentoStatus: StatusPedido[] = ['APROVADO', 'CONCLUIDO'];
     const faturamentoWhere = {
       userId: ctx.userId,
-      status: { in: ['APROVADO', 'CONCLUIDO'] as const },
+      status: { in: faturamentoStatus },
       dataPedido: dataPedidoFilter,
     };
 
-    const [totalPedidos, faturamentoAgg, porStatus, despesasAgg] = await Promise.all([
+    const [totalPedidos, pedidosFaturados, faturamentoAgg, porStatus, despesasAgg] =
+      await Promise.all([
       prisma.pedido.count({
         where: { userId: ctx.userId, dataPedido: dataPedidoFilter },
       }),
+      prisma.pedido.count({ where: faturamentoWhere }),
       prisma.pedido.aggregate({
         where: faturamentoWhere,
         _sum: { valorTotal: true },
-        _count: { id: true },
       }),
       prisma.pedido.groupBy({
         by: ['status'],
@@ -512,18 +515,15 @@ export class ChatQueryService {
         : Promise.resolve({ _sum: { valor: null } }),
     ]);
 
-    const fat = Number(faturamentoAgg._sum.valorTotal || 0);
-    const pedidosFaturados = faturamentoAgg._count.id;
+    const fat = Number(faturamentoAgg._sum?.valorTotal ?? 0);
     const ticketMedio = pedidosFaturados > 0 ? fat / pedidosFaturados : 0;
-    const desp = Number(despesasAgg._sum.valor || 0);
+    const desp = Number(despesasAgg._sum?.valor ?? 0);
 
-    const detalheStatus = porStatus.map(
-      (g: { status: string; _sum: { valorTotal: unknown }; _count: { id: number } }) => ({
-        status: STATUS_LABEL[g.status] || g.status,
-        quantidade: g._count.id,
-        valor: Number(g._sum.valorTotal || 0),
-      })
-    );
+    const detalheStatus = porStatus.map((g: (typeof porStatus)[number]) => ({
+      status: STATUS_LABEL[g.status] || g.status,
+      quantidade: g._count.id,
+      valor: Number(g._sum?.valorTotal ?? 0),
+    }));
 
     const result: Record<string, unknown> = {
       periodo: range.label,
