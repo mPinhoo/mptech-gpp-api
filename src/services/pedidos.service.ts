@@ -1,3 +1,4 @@
+import { withQuota } from '../billing/access.js';
 import { randomUUID } from 'crypto';
 import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '../utils/prisma.js';
@@ -222,7 +223,7 @@ export class PedidosService {
     const valorTotal = itensComPreco.reduce((sum, item) => sum + Number(item.subtotal), 0) + totalExtras;
     const numero = await this.generateNumero(userId);
 
-    const pedido = await prisma.pedido.create({
+    const pedido = await withQuota(userId, 'pedidosPorMes', tx => tx.pedido.create({
       data: {
         userId,
         numero,
@@ -235,7 +236,7 @@ export class PedidosService {
           create: (data.extras ?? []).map((e) => ({ nome: e.nome, valor: e.valor })),
         },
       },
-    });
+    }));
 
     return this.findById(userId, pedido.id);
   }

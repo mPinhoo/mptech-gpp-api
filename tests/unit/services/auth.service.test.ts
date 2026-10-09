@@ -3,6 +3,9 @@ const mockPrisma = {
     findUnique: jest.fn(),
     create: jest.fn(),
   },
+  grupoPermissao: {
+    upsert: jest.fn().mockResolvedValue({ id: 'grupo-padrao' }),
+  },
 };
 
 jest.mock('@/utils/prisma', () => ({
@@ -86,6 +89,15 @@ describe('AuthService', () => {
 
       expect(result.token).toBe('mocked-token');
       expect(result.user.nome).toBe('Novo');
+      // Self-service accounts get the business menus, never global administration.
+      expect(mockPrisma.grupoPermissao.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { nome: 'Usuário Zentra' } })
+      );
+      const created = mockPrisma.grupoPermissao.upsert.mock.calls[0][0].create.permissoes.create;
+      expect(created.map((p: { menu: string }) => p.menu)).not.toContain('administrativo_usuarios');
+      expect(mockPrisma.user.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ grupoPermissaoId: 'grupo-padrao' }) })
+      );
     });
 
     it('deve lançar ConflictError se email já existe', async () => {

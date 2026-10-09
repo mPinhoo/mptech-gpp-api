@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 const ORIGINAL_ENV = process.env;
 
 beforeEach(() => {
-  process.env = { ...ORIGINAL_ENV, JWT_SECRET: 'test-secret' };
+  process.env = { ...ORIGINAL_ENV, JWT_SECRET: 'test-secret-with-at-least-32-characters' };
 });
 
 afterAll(() => {

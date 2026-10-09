@@ -14,7 +14,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "sync-wiki": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('..','mptech-gpp-wiki','wiki');const dest=path.join('wiki');if(!fs.existsSync(src)){console.error('Wiki não encontrada em',src);process.exit(1)}fs.cpSync(src,dest,{recursive:true});console.log('Wiki sincronizada para',dest)\""
+    "sync-wiki": "node -e \"const fs=require('fs');const path=require('path');const src=path.join('..','mptech-gpp-wiki','wiki');const dest=path.join('wiki');if(!fs.existsSync(src)){console.error('Wiki não encontrada em',src);process.exit(1)}fs.cpSync(src,dest,{recursive:true});console.log('Wiki sincronizada para',dest)\"",
+    "typecheck": "prisma generate && tsc --noEmit",
+    "billing:seed": "tsx scripts/seed-billing.ts",
+    "billing:check": "tsx scripts/configure-asaas-sandbox.ts",
+    "billing:webhook": "tsx scripts/configure-asaas-sandbox.ts --create",
+    "billing:status": "tsx scripts/billing-status.ts",
+    "test:billing": "bash scripts/test-billing.sh"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -1,6 +1,9 @@
 const USER_ID = 'user-1';
 
 const mockPrisma = {
+  $transaction: jest.fn(async (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> => fn(mockPrisma)),
+  $executeRaw: jest.fn(),
+  user: { findUnique: jest.fn().mockResolvedValue({ billingManaged: false }) },
   cliente: {
     findMany: jest.fn(),
     findFirst: jest.fn(),

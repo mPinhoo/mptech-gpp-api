@@ -6,7 +6,8 @@ export class AppError extends Error {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
-    Object.setPrototypeOf(this, AppError.prototype);
+    // new.target keeps `instanceof` working for every subclass.
+    Object.setPrototypeOf(this, new.target.prototype);
   }
 }
 

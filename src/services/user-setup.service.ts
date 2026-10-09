@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 
 const DEFAULT_KANBAN_COLUNAS = [
@@ -6,16 +7,16 @@ const DEFAULT_KANBAN_COLUNAS = [
   { nome: 'Finalizado', ordem: 2, sistema: true },
 ];
 
-export async function initializeNewUser(userId: string) {
-  await prisma.configPrecificacao.upsert({
+export async function initializeNewUser(userId: string, db: Prisma.TransactionClient = prisma) {
+  await db.configPrecificacao.upsert({
     where: { userId },
     create: { userId },
     update: {},
   });
 
-  const colunasCount = await prisma.kanbanColuna.count({ where: { userId } });
+  const colunasCount = await db.kanbanColuna.count({ where: { userId } });
   if (colunasCount === 0) {
-    await prisma.kanbanColuna.createMany({
+    await db.kanbanColuna.createMany({
       data: DEFAULT_KANBAN_COLUNAS.map((coluna) => ({ ...coluna, userId })),
     });
   }

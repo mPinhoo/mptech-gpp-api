@@ -149,6 +149,21 @@ npm run test:coverage  # Com cobertura
 | PUT | `/api/clientes/:id` | Atualizar |
 | DELETE | `/api/clientes/:id` | Soft delete |
 
+### Assinaturas
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/billing/plans` | Planos à venda (público) |
+| POST | `/api/billing/checkouts` | Cria o checkout no Asaas e devolve o link (público) |
+| POST | `/api/billing/checkout-status` | Status de uma tentativa (público, com token assinado) |
+| POST | `/api/billing/webhooks/asaas` | Webhook do Asaas (header `asaas-access-token`) |
+| POST | `/api/billing/activate` | Define a senha pelo convite e inicia a sessão |
+| POST | `/api/billing/resend-activation` | Reenvia o convite (resposta igual para qualquer email) |
+| GET | `/api/billing/subscription` | Assinatura, uso do plano e cobranças (autenticado) |
+| POST | `/api/billing/subscription/cancel` | Cancela a recorrência (autenticado) |
+
+Fluxo, estados, variáveis, operação e checklist de produção: [docs/billing.md](docs/billing.md).
+
 ## Autenticação
 
 Todas as rotas (exceto login e register) requerem token JWT no header:

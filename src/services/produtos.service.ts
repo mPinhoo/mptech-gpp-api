@@ -1,3 +1,4 @@
+import { withQuota } from '../billing/access.js';
 import prisma from '../utils/prisma.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreateProdutoInput, UpdateProdutoInput } from '../schemas/produto.schema.js';
@@ -131,7 +132,7 @@ export class ProdutosService {
       });
     }
 
-    const produto = await prisma.produto.create({
+    const produto = await withQuota(userId, 'produtos', tx => tx.produto.create({
       data: {
         userId,
         nome: data.nome,
@@ -150,7 +151,7 @@ export class ProdutosService {
           include: { materiaPrima: { select: { id: true, nome: true, unidade: true, precoCusto: true } } },
         },
       },
-    });
+    }));
 
     return this.findById(userId, produto.id);
   }

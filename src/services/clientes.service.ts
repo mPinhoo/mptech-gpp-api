@@ -1,3 +1,4 @@
+import { withQuota } from '../billing/access.js';
 import prisma from '../utils/prisma.js';
 import { NotFoundError } from '../utils/errors.js';
 import { CreateClienteInput, UpdateClienteInput } from '../schemas/cliente.schema.js';
@@ -108,7 +109,7 @@ export class ClientesService {
   }
 
   async create(userId: string, data: CreateClienteInput) {
-    const cliente = await prisma.cliente.create({
+    const cliente = await withQuota(userId, 'clientes', tx => tx.cliente.create({
       data: {
         userId,
         nome: data.nome,
@@ -117,7 +118,7 @@ export class ClientesService {
         documento: data.documento || null,
         endereco: data.endereco || null,
       },
-    });
+    }));
 
     return {
       id: cliente.id,

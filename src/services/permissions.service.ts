@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import prisma from '../utils/prisma.js';
 import { isAdminEmail } from '../utils/admin.js';
 import {
@@ -58,6 +59,27 @@ export async function userCan(
   if (isAdminEmail(email)) return true;
   const permissoes = await getUserPermissoes(userId, email);
   return hasPermissao(permissoes, menu, acao);
+}
+
+export const DEFAULT_USER_GROUP = 'Usuário Zentra';
+
+// Self-service accounts (sign-up or subscription) get every business menu. The
+// administrativo menus manage all accounts, so they stay with platform staff.
+export function ensureDefaultUserGroup(db: Prisma.TransactionClient = prisma) {
+  return db.grupoPermissao.upsert({
+    where: { nome: DEFAULT_USER_GROUP },
+    update: {},
+    create: {
+      nome: DEFAULT_USER_GROUP,
+      sistema: true,
+      descricao: 'Todos os recursos do negócio, sem administração de contas',
+      permissoes: {
+        create: MENU_KEYS.filter((menu) => !menu.startsWith('administrativo')).map(
+          (menu) => ({ menu, leitura: true, criar: true, editar: true })
+        ),
+      },
+    },
+  });
 }
 
 export async function ensureDefaultGrupoAdmin() {

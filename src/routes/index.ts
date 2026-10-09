@@ -1,3 +1,5 @@
+import billingRoutes from '../billing/routes.js';
+import { billingAccess } from '../billing/access.js';
 import { Router } from 'express';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import { permissionMiddleware } from '../middlewares/permission.middleware.js';
@@ -18,10 +20,11 @@ import publicRoutes from './public.routes.js';
 
 const router = Router();
 
+router.use('/billing', billingRoutes);
 router.use('/auth', authRoutes);
 router.use('/public', publicRoutes);
 
-const protectedRoute = [authMiddleware, permissionMiddleware] as const;
+const protectedRoute = [authMiddleware, billingAccess, permissionMiddleware] as const;
 
 router.use('/users', ...protectedRoute, usersRoutes);
 router.use('/permissoes', ...protectedRoute, permissoesRoutes);

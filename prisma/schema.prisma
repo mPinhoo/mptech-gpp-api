@@ -31,6 +31,10 @@ model User {
   cidade              String?
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
+  billingManaged      Boolean              @default(false)
+  empresa             Empresa?
+  activationInvites   ActivationInvite[]
+  checkoutAttempts    CheckoutAttempt[]
   grupoPermissaoId    String?
   grupoPermissao      GrupoPermissao?      @relation(fields: [grupoPermissaoId], references: [id], onDelete: SetNull)
   createdAt           DateTime             @default(now())
@@ -46,6 +50,146 @@ model User {
   lembretes           Lembrete[]
 
   @@index([grupoPermissaoId])
+}
+
+// Billing keeps the existing user-owned tenant boundary. Team memberships remain
+// unavailable until the product supports them; no existing business data is moved.
+model Empresa {
+  id            String @id @default(uuid())
+  ownerId       String @unique
+  owner         User @relation(fields: [ownerId], references: [id])
+  nome          String
+  subscriptions Subscription[]
+  createdAt     DateTime @default(now())
+}
+
+model BillingPlan {
+  id           String @id
+  name         String
+  description  String
+  priceCents   Int
+  cycle        String @default("MONTHLY")
+  available    Boolean @default(true)
+  limits       Json
+  features     Json
+  checkouts    CheckoutAttempt[]
+  subscriptions Subscription[]
+}
+
+model CheckoutAttempt {
+  id               String @id @default(uuid())
+  requestId        String @unique
+  fingerprint      String
+  planId           String
+  plan             BillingPlan @relation(fields: [planId], references: [id])
+  priceCents       Int
+  email            String
+  nome             String
+  empresaNome      String
+  existingUserId   String?
+  existingUser     User? @relation(fields: [existingUserId], references: [id])
+  status           String @default("creating")
+  gatewayId        String? @unique
+  gatewaySubscriptionId String? @unique
+  gatewayCustomerId String?
+  gatewayUrl       String?
+  expiresAt        DateTime
+  nextReconcileAt  DateTime? @default(now())
+  lastError        String?
+  subscription    Subscription?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  @@index([email, createdAt])
+  @@index([existingUserId])
+  @@index([nextReconcileAt])
+}
+
+model Subscription {
+  id             String @id @default(uuid())
+  empresaId      String
+  empresa        Empresa @relation(fields: [empresaId], references: [id])
+  planId         String
+  plan           BillingPlan @relation(fields: [planId], references: [id])
+  checkoutId     String @unique
+  checkout       CheckoutAttempt @relation(fields: [checkoutId], references: [id])
+  gatewayId      String @unique
+  customerId     String
+  priceCents     Int
+  status         String @default("pending")
+  startedAt      DateTime @default(now())
+  paidUntil      DateTime?
+  nextDueDate    DateTime?
+  cancelRequestedAt DateTime?
+  canceledAt     DateTime?
+  payments       BillingPayment[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@index([empresaId, status])
+}
+
+model BillingPayment {
+  id             String @id
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  valueCents     Int
+  status         String
+  dueDate        DateTime
+  paidAt         DateTime?
+  invoiceUrl     String?
+  updatedAt      DateTime @updatedAt
+  @@index([subscriptionId, dueDate])
+}
+
+model BillingWebhook {
+  id            String @id
+  event         String
+  resourceId    String
+  resourceType  String
+  // Only resource identifiers are persisted, never the raw gateway payload.
+  status        String @default("pending")
+  attempts      Int @default(0)
+  availableAt   DateTime @default(now())
+  lastError     String?
+  receivedAt    DateTime @default(now())
+  processedAt   DateTime?
+  @@index([status, availableAt])
+}
+
+model ActivationInvite {
+  id            String @id @default(uuid())
+  userId        String
+  user          User @relation(fields: [userId], references: [id])
+  tokenHash     String @unique
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime @default(now())
+  @@index([userId, usedAt])
+}
+
+model BillingOutbox {
+  id            String @id @default(uuid())
+  dedupeKey     String @unique
+  recipient     String
+  kind          String
+  // AES-GCM encrypted message data (includes activation links when applicable).
+  encryptedData String @db.Text
+  status        String @default("pending")
+  attempts      Int @default(0)
+  availableAt   DateTime @default(now())
+  sentAt        DateTime?
+  messageId     String?
+  lastError     String?
+  createdAt     DateTime @default(now())
+  @@index([status, availableAt])
+}
+
+model BillingAudit {
+  id            String @id @default(uuid())
+  action        String
+  resourceId    String
+  detail        String?
+  createdAt     DateTime @default(now())
+  @@index([resourceId, createdAt])
 }
 
 model GrupoPermissao {

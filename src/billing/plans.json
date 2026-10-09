@@ -1,0 +1,145 @@
+[
+  {
+    "id": "basico",
+    "name": "Básico",
+    "priceCents": 3990,
+    "audience": "Para autônomos e pequenos negócios.",
+    "ctaLabel": "Escolher Básico",
+    "recommended": false,
+    "limits": {
+      "usuarios": {
+        "value": 1,
+        "status": "disponivel"
+      },
+      "pedidosPorMes": {
+        "value": 50,
+        "status": "disponivel"
+      },
+      "clientes": {
+        "value": 100,
+        "status": "disponivel"
+      },
+      "produtos": {
+        "value": 30,
+        "status": "disponivel"
+      },
+      "colaboradores": null
+    },
+    "items": [
+      {
+        "label": "Pedidos e orçamentos com link de aprovação",
+        "status": "disponivel"
+      },
+      {
+        "label": "Agenda e Kanban básicos",
+        "status": "disponivel"
+      },
+      {
+        "label": "Precificação e controle de estoque",
+        "status": "disponivel"
+      },
+      {
+        "label": "Painel com indicadores do negócio",
+        "status": "disponivel"
+      },
+      {
+        "label": "Relatórios básicos",
+        "status": "em_breve"
+      }
+    ]
+  },
+  {
+    "id": "pro",
+    "name": "Pro",
+    "priceCents": 7990,
+    "audience": "Para negócios em crescimento.",
+    "ctaLabel": "Escolher Pro",
+    "recommended": true,
+    "includesLabel": "Tudo do Básico, mais:",
+    "limits": {
+      "usuarios": {
+        "value": 3,
+        "status": "em_breve"
+      },
+      "pedidosPorMes": {
+        "value": 300,
+        "status": "disponivel"
+      },
+      "clientes": {
+        "value": 1000,
+        "status": "disponivel"
+      },
+      "produtos": {
+        "value": 200,
+        "status": "disponivel"
+      },
+      "colaboradores": {
+        "value": 5,
+        "status": "em_breve"
+      }
+    },
+    "items": [
+      {
+        "label": "Agenda e Kanban completos",
+        "status": "em_breve"
+      },
+      {
+        "label": "Relatórios avançados",
+        "status": "em_breve"
+      },
+      {
+        "label": "Permissões básicas",
+        "status": "em_breve"
+      },
+      {
+        "label": "Recursos de gestão de equipes",
+        "status": "em_breve"
+      }
+    ]
+  },
+  {
+    "id": "business",
+    "name": "Business",
+    "priceCents": 14990,
+    "audience": "Para negócios com equipes e operações maiores.",
+    "ctaLabel": "Escolher Business",
+    "recommended": false,
+    "includesLabel": "Tudo do Pro, mais:",
+    "limits": {
+      "usuarios": {
+        "value": 10,
+        "status": "em_breve"
+      },
+      "pedidosPorMes": {
+        "value": null,
+        "status": "disponivel"
+      },
+      "clientes": {
+        "value": null,
+        "status": "disponivel"
+      },
+      "produtos": {
+        "value": null,
+        "status": "disponivel"
+      },
+      "colaboradores": {
+        "value": 30,
+        "status": "em_breve"
+      }
+    },
+    "items": [
+      {
+        "label": "Permissões avançadas",
+        "status": "em_breve"
+      },
+      {
+        "label": "Relatórios completos",
+        "status": "em_breve"
+      },
+      {
+        "label": "Gestão avançada da operação",
+        "status": "em_breve"
+      }
+    ]
+  }
+]

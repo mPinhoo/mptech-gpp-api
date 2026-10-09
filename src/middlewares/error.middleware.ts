@@ -1,3 +1,4 @@
+import { ZodError } from 'zod';
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors.js';
 
@@ -7,6 +8,10 @@ export function errorMiddleware(
   res: Response,
   _next: NextFunction
 ): void {
+  if (err instanceof ZodError) {
+    res.status(422).json({ success:false, error:{message:'Dados inválidos.',code:'VALIDATION_ERROR'} });
+    return;
+  }
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       success: false,
@@ -18,13 +23,10 @@ export function errorMiddleware(
     return;
   }
 
-  console.error('Unexpected error:', err.message);
-  console.error('Stack:', err.stack);
-
+  // Error objects may contain database inputs, payment data or credentials.
   const isPrismaError = err.constructor?.name?.startsWith('Prisma');
-  if (isPrismaError) {
-    console.error('Prisma error details:', JSON.stringify(err, null, 2));
-  }
+  console.error('[API] Request failed', { type: isPrismaError ? 'database' : 'internal' });
+
   const message = isPrismaError
     ? 'Erro de conexão com o banco de dados'
     : 'Erro interno do servidor';

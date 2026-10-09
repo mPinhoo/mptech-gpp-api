@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
 
-const SECRET = process.env.JWT_SECRET || 'default-secret';
+function secret() {
+  const value = process.env.JWT_SECRET;
+  if (!value || value.length < 32) throw new Error('JWT_SECRET must have at least 32 characters');
+  return value;
+}
 
 export interface JwtPayload {
   userId: string;
@@ -10,9 +14,9 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, secret(), { expiresIn: '24h' });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, SECRET) as JwtPayload;
+  return jwt.verify(token, secret()) as JwtPayload;
 }

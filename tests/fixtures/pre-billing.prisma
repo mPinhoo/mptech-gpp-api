@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String               @id @default(uuid())
+  nome                String
+  email               String               @unique
+  senha               String
+  avatarUrl           String?              @db.Text
+  ativo               Boolean              @default(true)
+  documento           String?
+  dataNascimento      DateTime?
+  nomeFantasia        String?
+  usarNomeFantasia    Boolean              @default(true)
+  genero              String?
+  nacionalidade       String?
+  telefone            String?
+  endereco            String?
+  numero              String?
+  complemento         String?
+  bairro              String?
+  cep                 String?
+  pais                String?
+  estado              String?
+  cidade              String?
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
+  grupoPermissaoId    String?
+  grupoPermissao      GrupoPermissao?      @relation(fields: [grupoPermissaoId], references: [id], onDelete: SetNull)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  clientes            Cliente[]
+  produtos            Produto[]
+  materiasPrimas      MateriaPrima[]
+  pedidos             Pedido[]
+  despesas            Despesa[]
+  kanbanColunas       KanbanColuna[]
+  configPrecificacao  ConfigPrecificacao?
+  notificacoes        Notificacao[]
+  lembretes           Lembrete[]
+
+  @@index([grupoPermissaoId])
+}
+
+model GrupoPermissao {
+  id         String          @id @default(uuid())
+  nome       String          @unique
+  descricao  String?
+  sistema    Boolean         @default(false)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  permissoes PermissaoMenu[]
+  users      User[]
+}
+
+model PermissaoMenu {
+  id      String         @id @default(uuid())
+  grupoId String
+  grupo   GrupoPermissao @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  menu    String
+  leitura Boolean        @default(false)
+  criar   Boolean        @default(false)
+  editar  Boolean        @default(false)
+
+  @@unique([grupoId, menu])
+}
+
+model Cliente {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome      String
+  email     String?
+  telefone  String?
+  documento String?
+  endereco  String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pedidos   Pedido[]
+
+  @@index([userId])
+}
+
+enum StatusProduto {
+  ATIVO
+  INATIVO
+  FORA_DE_CICLO
+}
+
+model Produto {
+  id            String            @id @default(uuid())
+  userId        String
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome          String
+  categoria     String
+  descricao     String?
+  tempoProducao Decimal           @db.Decimal(10, 2) @default(1)
+  margemLucro   Decimal           @db.Decimal(5, 2)  @default(0)
+  preco         Decimal           @db.Decimal(10, 2)
+  status        StatusProduto     @default(ATIVO)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  itensPedido   ItemPedido[]
+  materiais     MaterialProduto[]
+
+  @@index([userId])
+}
+
+model MateriaPrima {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome             String
+  unidade          String            @default("un")
+  precoCusto       Decimal           @db.Decimal(10, 2) @default(0)
+  quantidade       Int               @default(0)
+  quantidadeMinima Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  despesas         Despesa[]
+  materiaisProduto MaterialProduto[]
+
+  @@index([userId])
+}
+
+model MaterialProduto {
+  id             String       @id @default(uuid())
+  produtoId      String
+  produto        Produto      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  materiaPrimaId String
+  materiaPrima   MateriaPrima @relation(fields: [materiaPrimaId], references: [id])
+  quantidade     Decimal      @db.Decimal(10, 2)
+  custoUnitario  Decimal      @db.Decimal(10, 2)
+  subtotal       Decimal      @db.Decimal(10, 2)
+}
+
+model Despesa {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  descricao      String
+  valor          Decimal       @db.Decimal(10, 2)
+  materiaPrimaId String?
+  materiaPrima   MateriaPrima? @relation(fields: [materiaPrimaId], references: [id])
+  createdAt      DateTime      @default(now())
+
+  @@index([userId])
+}
+
+enum StatusPedido {
+  PENDENTE
+  APROVADO
+  CONCLUIDO
+  CANCELADO
+}
+
+model Pedido {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  numero         String
+  clienteId      String
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  dataPedido     DateTime
+  prazoEntrega   DateTime
+  status         StatusPedido  @default(PENDENTE)
+  valorTotal     Decimal       @db.Decimal(10, 2)
+  enviadoCliente Boolean       @default(false)
+  linkToken      String?       @unique
+  kanbanColunaId String?
+  kanbanColuna   KanbanColuna? @relation(fields: [kanbanColunaId], references: [id], onDelete: SetNull)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  itens          ItemPedido[]
+  extras         ExtraPedido[]
+  notificacoes   Notificacao[]
+
+  @@unique([userId, numero])
+  @@index([userId])
+}
+
+model ExtraPedido {
+  id       String  @id @default(uuid())
+  pedidoId String
+  pedido   Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  nome     String
+  valor    Decimal @db.Decimal(10, 2)
+}
+
+model KanbanColuna {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nome      String
+  ordem     Int      @default(0)
+  sistema   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  pedidos   Pedido[]
+
+  @@index([userId])
+}
+
+model ItemPedido {
+  id            String  @id @default(uuid())
+  pedidoId      String
+  pedido        Pedido  @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produtoId     String
+  produto       Produto @relation(fields: [produtoId], references: [id])
+  quantidade    Int
+  precoUnitario Decimal @db.Decimal(10, 2)
+  subtotal      Decimal @db.Decimal(10, 2)
+}
+
+model ConfigPrecificacao {
+  id              String            @id @default(uuid())
+  userId          String            @unique
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salarioMensal   Decimal           @db.Decimal(10, 2) @default(0)
+  horasSemanais   Decimal           @db.Decimal(5, 2)  @default(40)
+  semanasMes      Decimal           @db.Decimal(5, 2)  @default(4)
+  diasTrabalhados Int               @default(22)
+  horasDia        Decimal           @db.Decimal(5, 2)  @default(8)
+  taxaMarketplace Decimal           @db.Decimal(5, 2)  @default(0)
+  taxaCartao      Decimal           @db.Decimal(5, 2)  @default(0)
+  impostos        Decimal           @db.Decimal(5, 2)  @default(0)
+  taxasAdicionais Decimal           @db.Decimal(5, 2)  @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  custosFixos     CustoFixoConfig[]
+}
+
+model CustoFixoConfig {
+  id       String             @id @default(uuid())
+  configId String
+  config   ConfigPrecificacao @relation(fields: [configId], references: [id], onDelete: Cascade)
+  nome     String
+  valor    Decimal            @db.Decimal(10, 2)
+}
+
+enum TipoNotificacao {
+  PEDIDO_APROVADO
+  AGENDA_LEMBRETE
+  PEDIDO_PRAZO_ALERTA
+}
+
+model Lembrete {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titulo         String
+  descricao      String?
+  dataReferencia String
+  agendadoPara   DateTime
+  notificado     Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  notificacoes   Notificacao[]
+
+  @@index([userId, dataReferencia])
+  @@index([notificado, agendadoPara])
+}
+
+model Notificacao {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedidoId  String?
+  pedido    Pedido?           @relation(fields: [pedidoId], references: [id], onDelete: SetNull)
+  lembreteId String?
+  lembrete  Lembrete?         @relation(fields: [lembreteId], references: [id], onDelete: SetNull)
+  tipo      TipoNotificacao
+  titulo    String
+  mensagem  String
+  lida      Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@index([userId, lida])
+  @@index([userId, createdAt])
+}

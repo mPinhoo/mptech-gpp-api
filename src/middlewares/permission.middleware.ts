@@ -91,7 +91,7 @@ export async function permissionMiddleware(
       return;
     }
 
-    const path = req.baseUrl + req.path;
+    const path = (req.baseUrl + req.path).replace(/^\/api(?=\/)/, '');
     const rule = resolveRoutePermission(req.method, path);
 
     if (!rule) {

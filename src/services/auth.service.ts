@@ -1,3 +1,4 @@
+import { billingEnabled } from '../billing/config.js';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/prisma.js';
 import { signToken, type JwtPayload } from '../utils/jwt.js';
@@ -5,7 +6,7 @@ import { UnauthorizedError, ConflictError, ForbiddenError, AppError, NotFoundErr
 import { LoginInput, RegisterInput, UpdateProfileInput } from '../schemas/auth.schema.js';
 import { initializeNewUser } from './user-setup.service.js';
 import { validateAvatarUrl } from '../utils/avatar.js';
-import { getUserPermissoes } from './permissions.service.js';
+import { ensureDefaultUserGroup, getUserPermissoes } from './permissions.service.js';
 import { MenuPermissao } from '../constants/menus.js';
 import { isAdminEmail } from '../utils/admin.js';
 
@@ -97,6 +98,7 @@ export class AuthService {
   }
 
   async register(data: RegisterInput) {
+    if (billingEnabled()) throw new ForbiddenError('Escolha um plano para criar sua conta.');
     const existing = await prisma.user.findUnique({
       where: { email: data.email },
     });
@@ -106,12 +108,14 @@ export class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.senha, 10);
+    const grupo = await ensureDefaultUserGroup();
 
     const user = await prisma.user.create({
       data: {
         nome: data.nome,
         email: data.email,
         senha: hashedPassword,
+        grupoPermissaoId: grupo.id,
       },
       include: { grupoPermissao: { select: { id: true, nome: true } } },
     });
