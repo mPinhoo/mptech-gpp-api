@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma.js';
+import { publishNotificacao } from './notification-events.js';
 import {
   buildMensagemAlertaPrazo,
   calcularAlertaPrazo,
@@ -37,7 +38,7 @@ export async function processarAlertasPrazoPedidos() {
       continue;
     }
 
-    await prisma.notificacao.create({
+    const notificacao = await prisma.notificacao.create({
       data: {
         userId: pedido.userId,
         pedidoId: pedido.id,
@@ -50,6 +51,7 @@ export async function processarAlertasPrazoPedidos() {
         ),
       },
     });
+    publishNotificacao(notificacao);
 
     created += 1;
   }

@@ -13,7 +13,12 @@ jest.mock('@/utils/prisma', () => ({
   default: mockPrisma,
 }));
 
+jest.mock('@/services/notification-events', () => ({
+  publishNotificacao: jest.fn(),
+}));
+
 import { processarAlertasPrazoPedidos } from '@/services/prazo-alerta.service';
+import { publishNotificacao } from '@/services/notification-events';
 
 describe('processarAlertasPrazoPedidos', () => {
   beforeEach(() => {
@@ -41,6 +46,7 @@ describe('processarAlertasPrazoPedidos', () => {
     const created = await processarAlertasPrazoPedidos();
 
     expect(created).toBe(1);
+    expect(publishNotificacao).toHaveBeenCalledWith({ id: 'n1' });
     expect(mockPrisma.notificacao.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -70,5 +76,6 @@ describe('processarAlertasPrazoPedidos', () => {
 
     expect(created).toBe(0);
     expect(mockPrisma.notificacao.create).not.toHaveBeenCalled();
+    expect(publishNotificacao).not.toHaveBeenCalled();
   });
 });

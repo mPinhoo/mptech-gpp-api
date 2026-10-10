@@ -32,6 +32,7 @@ model User {
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
   billingManaged      Boolean              @default(false)
+  pushSubscriptions   PushSubscription[]
   empresa             Empresa?
   activationInvites   ActivationInvite[]
   checkoutAttempts    CheckoutAttempt[]
@@ -424,8 +425,26 @@ model Notificacao {
   titulo    String
   mensagem  String
   lida      Boolean           @default(false)
+  // Removed by the user. Kept (not deleted) so the reminder and deadline jobs
+  // still see it and do not recreate the same notification.
+  arquivadaEm DateTime?
   createdAt DateTime          @default(now())
 
   @@index([userId, lida])
   @@index([userId, createdAt])
+}
+
+// Web Push subscription of one browser/device. The endpoint is a capability URL
+// issued by the browser's push service; it belongs to whoever signed in last.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

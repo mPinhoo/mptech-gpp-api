@@ -17,12 +17,15 @@ import notificacoesRoutes from './notificacoes.routes.js';
 import agendaRoutes from './agenda.routes.js';
 import chatRoutes from './chat.routes.js';
 import publicRoutes from './public.routes.js';
+import pushRoutes from './push.routes.js';
 
 const router = Router();
 
 router.use('/billing', billingRoutes);
 router.use('/auth', authRoutes);
 router.use('/public', publicRoutes);
+// Device registration only: must keep working for a lapsed subscription (logout cleanup).
+router.use('/push', authMiddleware, pushRoutes);
 
 const protectedRoute = [authMiddleware, billingAccess, permissionMiddleware] as const;
 

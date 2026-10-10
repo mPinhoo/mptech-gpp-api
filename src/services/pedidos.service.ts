@@ -2,6 +2,7 @@ import { withQuota } from '../billing/access.js';
 import { randomUUID } from 'crypto';
 import { Decimal } from '@prisma/client/runtime/library';
 import prisma from '../utils/prisma.js';
+import { publishNotificacao } from './notification-events.js';
 import { NotFoundError, AppError } from '../utils/errors.js';
 import { CreatePedidoInput, UpdatePedidoInput } from '../schemas/pedido.schema.js';
 import { buildOrderBy, ListFilters, parseSortOrder } from '../utils/sort.js';
@@ -423,7 +424,7 @@ export class PedidosService {
       throw new AppError('Este pedido não pode mais ser aprovado', 400, 'INVALID_STATUS');
     }
 
-    await prisma.$transaction([
+    const [, notificacao] = await prisma.$transaction([
       prisma.pedido.update({
         where: { id: pedido.id },
         data: { status: 'APROVADO' },
@@ -438,6 +439,7 @@ export class PedidosService {
         },
       }),
     ]);
+    publishNotificacao(notificacao);
 
     return this.findByToken(token);
   }

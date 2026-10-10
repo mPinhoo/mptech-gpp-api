@@ -164,6 +164,18 @@ npm run test:coverage  # Com cobertura
 
 Fluxo, estados, variáveis, operação e checklist de produção: [docs/billing.md](docs/billing.md).
 
+### Notificações
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/notificacoes` | Últimas notificações (lidas e não lidas) e total de não lidas |
+| PATCH | `/api/notificacoes/lidas` | Marcar todas como lidas |
+| DELETE | `/api/notificacoes` | Remover todas |
+| GET | `/api/notificacoes/stream` | Eventos em tempo real (SSE) |
+| POST/DELETE | `/api/push/inscricoes` | Inscrever/remover o aparelho no Web Push |
+
+Tempo real, push e compatibilidade: [docs/notificacoes.md](docs/notificacoes.md).
+
 ## Autenticação
 
 Todas as rotas (exceto login e register) requerem token JWT no header:

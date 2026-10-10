@@ -12,6 +12,6 @@ trap 'rm -f "$billing_sql"' EXIT
 # Requires an EMPTY, already created local test database. Never resets a database.
 npx prisma migrate diff --from-empty --to-schema-datamodel tests/fixtures/pre-billing.prisma --script > "$billing_sql"
 npx prisma db execute --file "$billing_sql" --schema prisma/schema.prisma
-for migration in prisma/migrations/20261009000000_add_billing prisma/migrations/20261009150000_billing_checkout_link; do
+for migration in prisma/migrations/20261009000000_add_billing prisma/migrations/20261009150000_billing_checkout_link prisma/migrations/20261010000000_notificacoes_push; do
   npx prisma db execute --file "$migration/migration.sql" --schema prisma/schema.prisma
 done

@@ -1,4 +1,5 @@
 import prisma from '../utils/prisma.js';
+import { publishNotificacao } from './notification-events.js';
 import { AppError, NotFoundError } from '../utils/errors.js';
 import { CreateLembreteInput, UpdateLembreteInput } from '../schemas/agenda.schema.js';
 import {
@@ -204,7 +205,7 @@ export async function processarLembretesPendentes() {
       timeZone: 'America/Sao_Paulo',
     });
 
-    await prisma.$transaction([
+    const [notificacao] = await prisma.$transaction([
       prisma.notificacao.create({
         data: {
           userId: lembrete.userId,
@@ -221,6 +222,7 @@ export async function processarLembretesPendentes() {
         data: { notificado: true },
       }),
     ]);
+    publishNotificacao(notificacao);
   }
 
   return pendentes.length;

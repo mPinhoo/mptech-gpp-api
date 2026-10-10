@@ -10,7 +10,7 @@ const mockPrisma = {
     count: jest.fn(),
   },
   notificacao: {
-    create: jest.fn(),
+    create: jest.fn().mockResolvedValue({ id: 'n1', userId: 'user-1' }),
   },
   $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
 };
@@ -20,8 +20,14 @@ jest.mock('@/utils/prisma', () => ({
   default: mockPrisma,
 }));
 
+jest.mock('@/services/notification-events', () => ({
+  publishNotificacao: jest.fn(),
+  emitNotificationEvent: jest.fn(),
+}));
+
 import { AgendaService, processarLembretesPendentes } from '@/services/agenda.service';
 import { NotFoundError } from '@/utils/errors';
+import { publishNotificacao } from '@/services/notification-events';
 
 describe('AgendaService', () => {
   let service: AgendaService;
@@ -126,6 +132,9 @@ describe('AgendaService', () => {
           }),
         })
       );
+      // Announced once, after the transaction committed.
+      expect(publishNotificacao).toHaveBeenCalledTimes(1);
+      expect(publishNotificacao).toHaveBeenCalledWith({ id: 'n1', userId: USER_ID });
     });
   });
 });
